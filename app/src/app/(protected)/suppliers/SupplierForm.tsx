@@ -17,8 +17,12 @@ type SupplierDefaults = {
   address2?: string | null;
   phone?: string | null;
   fax?: string | null;
+  mobile?: string | null;
   closing_day?: number | null;
   payment_day?: number | null;
+  tax_method?: number | null;
+  calc_method?: number | null;
+  rounding_method?: number | null;
   note?: string | null;
 };
 
@@ -87,11 +91,14 @@ export function SupplierForm({
           <Field label="FAX番号">
             <input name="fax" defaultValue={defaults?.fax ?? ""} className="input" />
           </Field>
+          <Field label="携帯番号">
+            <input name="mobile" defaultValue={defaults?.mobile ?? ""} className="input" />
+          </Field>
         </div>
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-6">
-        <h2 className="mb-4 text-sm font-bold text-slate-600">締め・支払</h2>
+        <h2 className="mb-4 text-sm font-bold text-slate-600">締め・支払・計算方式</h2>
         <div className="grid grid-cols-2 gap-4">
           <Field label="締日">
             <input
@@ -112,6 +119,25 @@ export function SupplierForm({
               defaultValue={defaults?.payment_day ?? ""}
               className="input"
             />
+          </Field>
+          <Field label="課税方式">
+            <select name="tax_method" defaultValue={defaults?.tax_method ?? 0} className="input">
+              <option value={0}>外税</option>
+              <option value={1}>内税</option>
+            </select>
+          </Field>
+          <Field label="計算方式">
+            <select name="calc_method" defaultValue={defaults?.calc_method ?? 0} className="input">
+              <option value={0}>請求単位</option>
+              <option value={1}>明細単位</option>
+            </select>
+          </Field>
+          <Field label="丸め方式">
+            <select name="rounding_method" defaultValue={defaults?.rounding_method ?? 0} className="input">
+              <option value={0}>四捨五入</option>
+              <option value={1}>切捨て</option>
+              <option value={2}>切上げ</option>
+            </select>
           </Field>
         </div>
       </section>

@@ -25,6 +25,11 @@ function toDecimal(v: FormDataEntryValue | null): string | null {
   return s === null ? null : s;
 }
 
+function toSmallInt(v: FormDataEntryValue | null): number | null {
+  const s = emptyToNull(v);
+  return s === null ? null : parseInt(s, 10);
+}
+
 export async function createProduct(
   _prevState: ProductFormState,
   formData: FormData,
@@ -46,10 +51,23 @@ export async function createProduct(
       spec: emptyToNull(formData.get("spec")),
       kana: emptyToNull(formData.get("kana")),
       unit_code: emptyToNull(formData.get("unit_code")),
+      tax_category: toSmallInt(formData.get("tax_category")) ?? 0,
+      stock_managed: formData.get("stock_managed") === "on",
+      cost_category: toSmallInt(formData.get("cost_category")) ?? 0,
+      major_class_code: emptyToNull(formData.get("major_class_code")),
+      middle_class_code: emptyToNull(formData.get("middle_class_code")),
+      minor_class_code: emptyToNull(formData.get("minor_class_code")),
+      category1_code: emptyToNull(formData.get("category1_code")),
+      category2_code: emptyToNull(formData.get("category2_code")),
+      category3_code: emptyToNull(formData.get("category3_code")),
       sale_price_1: toDecimal(formData.get("sale_price_1")),
       sale_price_2: toDecimal(formData.get("sale_price_2")),
       sale_price_3: toDecimal(formData.get("sale_price_3")),
+      sale_price_4: toDecimal(formData.get("sale_price_4")),
+      sale_price_5: toDecimal(formData.get("sale_price_5")),
       standard_cost: toDecimal(formData.get("standard_cost")),
+      last_cost: toDecimal(formData.get("last_cost")),
+      moving_avg_cost: toDecimal(formData.get("moving_avg_cost")),
     },
   });
 
@@ -74,10 +92,23 @@ export async function updateProduct(
       spec: emptyToNull(formData.get("spec")),
       kana: emptyToNull(formData.get("kana")),
       unit_code: emptyToNull(formData.get("unit_code")),
+      tax_category: toSmallInt(formData.get("tax_category")) ?? 0,
+      stock_managed: formData.get("stock_managed") === "on",
+      cost_category: toSmallInt(formData.get("cost_category")) ?? 0,
+      major_class_code: emptyToNull(formData.get("major_class_code")),
+      middle_class_code: emptyToNull(formData.get("middle_class_code")),
+      minor_class_code: emptyToNull(formData.get("minor_class_code")),
+      category1_code: emptyToNull(formData.get("category1_code")),
+      category2_code: emptyToNull(formData.get("category2_code")),
+      category3_code: emptyToNull(formData.get("category3_code")),
       sale_price_1: toDecimal(formData.get("sale_price_1")),
       sale_price_2: toDecimal(formData.get("sale_price_2")),
       sale_price_3: toDecimal(formData.get("sale_price_3")),
+      sale_price_4: toDecimal(formData.get("sale_price_4")),
+      sale_price_5: toDecimal(formData.get("sale_price_5")),
       standard_cost: toDecimal(formData.get("standard_cost")),
+      last_cost: toDecimal(formData.get("last_cost")),
+      moving_avg_cost: toDecimal(formData.get("moving_avg_cost")),
       updated_at: new Date(),
     },
   });

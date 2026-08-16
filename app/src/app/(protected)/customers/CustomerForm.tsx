@@ -19,9 +19,20 @@ type CustomerDefaults = {
   address2?: string | null;
   phone?: string | null;
   fax?: string | null;
+  mobile?: string | null;
   closing_day?: number | null;
   collection_day?: number | null;
+  collection_type?: string | null;
+  collection_note?: string | null;
   billing_customer_code?: string | null;
+  category1_code?: string | null;
+  category2_code?: string | null;
+  category3_code?: string | null;
+  price_rank?: number | null;
+  markup_rate?: unknown;
+  tax_method?: number | null;
+  calc_method?: number | null;
+  rounding_method?: number | null;
   note?: string | null;
 };
 
@@ -30,14 +41,21 @@ export function CustomerForm({
   defaults,
   staffOptions,
   regionOptions,
+  category1Options,
+  category2Options,
+  category3Options,
   isEdit,
 }: {
   action: (state: CustomerFormState, formData: FormData) => Promise<CustomerFormState>;
   defaults?: CustomerDefaults;
   staffOptions: Option[];
   regionOptions: Option[];
+  category1Options: Option[];
+  category2Options: Option[];
+  category3Options: Option[];
   isEdit: boolean;
 }) {
+  const dec = (v: unknown) => (v === null || v === undefined ? "" : String(v));
   const [state, formAction, isPending] = useActionState(action, {});
 
   return (
@@ -90,6 +108,9 @@ export function CustomerForm({
           </Field>
           <Field label="FAX番号">
             <input name="fax" defaultValue={defaults?.fax ?? ""} className="input" />
+          </Field>
+          <Field label="携帯番号">
+            <input name="mobile" defaultValue={defaults?.mobile ?? ""} className="input" />
           </Field>
         </div>
       </section>
@@ -144,6 +165,80 @@ export function CustomerForm({
               placeholder="請求をまとめる先の得意先コード"
               className="input"
             />
+          </Field>
+          <Field label="集金区分">
+            <input name="collection_type" defaultValue={defaults?.collection_type ?? ""} className="input" />
+          </Field>
+          <Field label="集金備考">
+            <input name="collection_note" defaultValue={defaults?.collection_note ?? ""} className="input" />
+          </Field>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-slate-200 bg-white p-6">
+        <h2 className="mb-4 text-sm font-bold text-slate-600">分類・単価・計算方式</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="分類区分1">
+            <select name="category1_code" defaultValue={defaults?.category1_code ?? ""} className="input">
+              <option value="">（未設定）</option>
+              {category1Options.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} - {c.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="分類区分2">
+            <select name="category2_code" defaultValue={defaults?.category2_code ?? ""} className="input">
+              <option value="">（未設定）</option>
+              {category2Options.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} - {c.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="分類区分3">
+            <select name="category3_code" defaultValue={defaults?.category3_code ?? ""} className="input">
+              <option value="">（未設定）</option>
+              {category3Options.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} - {c.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="売上単価ランク">
+            <input
+              type="number"
+              name="price_rank"
+              min={1}
+              max={5}
+              defaultValue={defaults?.price_rank ?? ""}
+              className="input"
+            />
+          </Field>
+          <Field label="掛率">
+            <input type="number" step="0.001" name="markup_rate" defaultValue={dec(defaults?.markup_rate)} className="input" />
+          </Field>
+          <Field label="課税方式">
+            <select name="tax_method" defaultValue={defaults?.tax_method ?? 0} className="input">
+              <option value={0}>外税</option>
+              <option value={1}>内税</option>
+            </select>
+          </Field>
+          <Field label="計算方式">
+            <select name="calc_method" defaultValue={defaults?.calc_method ?? 0} className="input">
+              <option value={0}>請求単位</option>
+              <option value={1}>明細単位</option>
+            </select>
+          </Field>
+          <Field label="丸め方式">
+            <select name="rounding_method" defaultValue={defaults?.rounding_method ?? 0} className="input">
+              <option value={0}>四捨五入</option>
+              <option value={1}>切捨て</option>
+              <option value={2}>切上げ</option>
+            </select>
           </Field>
         </div>
       </section>

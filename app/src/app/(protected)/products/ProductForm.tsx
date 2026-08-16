@@ -11,21 +11,46 @@ type ProductDefaults = {
   spec?: string | null;
   kana?: string | null;
   unit_code?: string | null;
+  tax_category?: number | null;
+  stock_managed?: boolean;
+  cost_category?: number | null;
+  major_class_code?: string | null;
+  middle_class_code?: string | null;
+  minor_class_code?: string | null;
+  category1_code?: string | null;
+  category2_code?: string | null;
+  category3_code?: string | null;
   sale_price_1?: unknown;
   sale_price_2?: unknown;
   sale_price_3?: unknown;
+  sale_price_4?: unknown;
+  sale_price_5?: unknown;
   standard_cost?: unknown;
+  last_cost?: unknown;
+  moving_avg_cost?: unknown;
 };
 
 export function ProductForm({
   action,
   defaults,
   unitOptions,
+  majorClassOptions,
+  middleClassOptions,
+  minorClassOptions,
+  category1Options,
+  category2Options,
+  category3Options,
   isEdit,
 }: {
   action: (state: ProductFormState, formData: FormData) => Promise<ProductFormState>;
   defaults?: ProductDefaults;
   unitOptions: Option[];
+  majorClassOptions: Option[];
+  middleClassOptions: Option[];
+  minorClassOptions: Option[];
+  category1Options: Option[];
+  category2Options: Option[];
+  category3Options: Option[];
   isEdit: boolean;
 }) {
   const [state, formAction, isPending] = useActionState(action, {});
@@ -58,6 +83,98 @@ export function ProductForm({
           </Field>
           <Field label="フリガナ">
             <input name="kana" defaultValue={defaults?.kana ?? ""} className="input" />
+          </Field>
+          <Field label="消費税区分">
+            <input
+              type="number"
+              name="tax_category"
+              defaultValue={defaults?.tax_category ?? 0}
+              className="input"
+            />
+          </Field>
+          <Field label="原価区分">
+            <input
+              type="number"
+              name="cost_category"
+              defaultValue={defaults?.cost_category ?? 0}
+              className="input"
+            />
+          </Field>
+          <label className="flex items-center gap-2 pt-6">
+            <input
+              type="checkbox"
+              name="stock_managed"
+              defaultChecked={defaults?.stock_managed ?? true}
+              className="h-4 w-4"
+            />
+            <span className="text-sm text-slate-700">在庫管理する</span>
+          </label>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-slate-200 bg-white p-6">
+        <h2 className="mb-4 text-sm font-bold text-slate-600">分類</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="大分類コード">
+            <select name="major_class_code" defaultValue={defaults?.major_class_code ?? ""} className="input">
+              <option value="">（未設定）</option>
+              {majorClassOptions.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} - {c.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="中分類コード">
+            <select name="middle_class_code" defaultValue={defaults?.middle_class_code ?? ""} className="input">
+              <option value="">（未設定）</option>
+              {middleClassOptions.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} - {c.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="小分類コード">
+            <select name="minor_class_code" defaultValue={defaults?.minor_class_code ?? ""} className="input">
+              <option value="">（未設定）</option>
+              {minorClassOptions.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} - {c.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <div />
+          <Field label="分類区分1">
+            <select name="category1_code" defaultValue={defaults?.category1_code ?? ""} className="input">
+              <option value="">（未設定）</option>
+              {category1Options.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} - {c.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="分類区分2">
+            <select name="category2_code" defaultValue={defaults?.category2_code ?? ""} className="input">
+              <option value="">（未設定）</option>
+              {category2Options.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} - {c.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="分類区分3">
+            <select name="category3_code" defaultValue={defaults?.category3_code ?? ""} className="input">
+              <option value="">（未設定）</option>
+              {category3Options.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} - {c.name}
+                </option>
+              ))}
+            </select>
           </Field>
         </div>
       </section>
@@ -92,12 +209,48 @@ export function ProductForm({
               className="input"
             />
           </Field>
+          <Field label="売上単価4">
+            <input
+              type="number"
+              step="0.01"
+              name="sale_price_4"
+              defaultValue={dec(defaults?.sale_price_4)}
+              className="input"
+            />
+          </Field>
+          <Field label="売上単価5">
+            <input
+              type="number"
+              step="0.01"
+              name="sale_price_5"
+              defaultValue={dec(defaults?.sale_price_5)}
+              className="input"
+            />
+          </Field>
           <Field label="標準仕入単価">
             <input
               type="number"
               step="0.01"
               name="standard_cost"
               defaultValue={dec(defaults?.standard_cost)}
+              className="input"
+            />
+          </Field>
+          <Field label="最終仕入単価">
+            <input
+              type="number"
+              step="0.01"
+              name="last_cost"
+              defaultValue={dec(defaults?.last_cost)}
+              className="input"
+            />
+          </Field>
+          <Field label="移動平均単価">
+            <input
+              type="number"
+              step="0.0001"
+              name="moving_avg_cost"
+              defaultValue={dec(defaults?.moving_avg_cost)}
               className="input"
             />
           </Field>
