@@ -1,0 +1,638 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model banks {
+  code                  String                  @id @db.VarChar(10)
+  name                  String                  @db.VarChar(60)
+  is_own_company        Boolean                 @default(false)
+  branch_name           String?                 @db.VarChar(60)
+  account_type          String?                 @db.VarChar(10)
+  account_number        String?                 @db.VarChar(20)
+  account_holder        String?                 @db.VarChar(60)
+  payment_voucher_lines payment_voucher_lines[]
+  receipt_voucher_lines receipt_voucher_lines[]
+}
+
+model billing_closings {
+  id              BigInt            @id @default(autoincrement())
+  closing_day     Int               @db.SmallInt
+  as_of_date      DateTime          @db.Date
+  executed_at     DateTime          @default(now()) @db.Timestamptz(6)
+  executed_by     String?           @db.Uuid
+  is_reversed     Boolean           @default(false)
+  users           users?            @relation(fields: [executed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  billing_records billing_records[]
+}
+
+model billing_records {
+  id               BigInt           @id @default(autoincrement())
+  closing_id       BigInt
+  customer_code    String           @db.VarChar(10)
+  period_from      DateTime?        @db.Date
+  period_to        DateTime         @db.Date
+  previous_balance Decimal          @default(0) @db.Decimal(14, 2)
+  sales_amount     Decimal          @default(0) @db.Decimal(14, 2)
+  receipt_amount   Decimal          @default(0) @db.Decimal(14, 2)
+  tax_amount       Decimal          @default(0) @db.Decimal(14, 2)
+  billed_amount    Decimal          @default(0) @db.Decimal(14, 2)
+  created_at       DateTime         @default(now()) @db.Timestamptz(6)
+  billing_closings billing_closings @relation(fields: [closing_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customers        customers        @relation(fields: [customer_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model company_settings {
+  id                      Int        @id @default(1) @db.SmallInt
+  company_name            String     @db.VarChar(60)
+  postal_code             String?    @db.VarChar(10)
+  address1                String?    @db.VarChar(100)
+  address2                String?    @db.VarChar(100)
+  phone                   String?    @db.VarChar(20)
+  fax                     String?    @db.VarChar(20)
+  invoice_registration_no String?    @db.VarChar(20)
+  default_closing_day     Int        @default(31) @db.SmallInt
+  default_tax_method      Int        @default(0) @db.SmallInt
+  default_calc_method     Int        @default(0) @db.SmallInt
+  default_rounding        Int        @default(0) @db.SmallInt
+  cash_customer_code      String?    @db.VarChar(10)
+  customers               customers? @relation(fields: [cash_customer_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model customer_category_1 {
+  code      String      @id @db.VarChar(10)
+  name      String      @db.VarChar(40)
+  customers customers[]
+}
+
+model customer_category_2 {
+  code      String      @id @db.VarChar(10)
+  name      String      @db.VarChar(40)
+  customers customers[]
+}
+
+model customer_category_3 {
+  code      String      @id @db.VarChar(10)
+  name      String      @db.VarChar(40)
+  customers customers[]
+}
+
+model customer_delivery_addresses {
+  id             Int              @id @default(autoincrement())
+  customer_code  String           @db.VarChar(10)
+  seq            Int              @default(1) @db.SmallInt
+  name           String           @db.VarChar(60)
+  postal_code    String?          @db.VarChar(10)
+  address1       String?          @db.VarChar(100)
+  address2       String?          @db.VarChar(100)
+  phone          String?          @db.VarChar(20)
+  customers      customers        @relation(fields: [customer_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  sales_vouchers sales_vouchers[]
+
+  @@unique([customer_code, seq])
+}
+
+model customers {
+  code                        String                        @id @db.VarChar(10)
+  reference_code              String?                       @db.VarChar(10)
+  name1                       String                        @db.VarChar(60)
+  name2                       String?                       @db.VarChar(60)
+  short_name                  String?                       @db.VarChar(30)
+  kana                        String?                       @db.VarChar(60)
+  honorific                   String?                       @db.VarChar(10)
+  closing_day                 Int?                          @db.SmallInt
+  collection_day              Int?                          @db.SmallInt
+  collection_type             String?                       @db.VarChar(10)
+  collection_note             String?                       @db.VarChar(200)
+  staff_code                  String?                       @db.VarChar(10)
+  postal_code                 String?                       @db.VarChar(10)
+  address1                    String?                       @db.VarChar(100)
+  address2                    String?                       @db.VarChar(100)
+  phone                       String?                       @db.VarChar(20)
+  fax                         String?                       @db.VarChar(20)
+  mobile                      String?                       @db.VarChar(20)
+  region_code                 String?                       @db.VarChar(10)
+  billing_customer_code       String?                       @db.VarChar(10)
+  category1_code              String?                       @db.VarChar(10)
+  category2_code              String?                       @db.VarChar(10)
+  category3_code              String?                       @db.VarChar(10)
+  trade_started_on            DateTime?                     @db.Date
+  opening_balance             Decimal?                      @default(0) @db.Decimal(14, 2)
+  price_rank                  Int?                          @db.SmallInt
+  markup_rate                 Decimal?                      @db.Decimal(6, 3)
+  tax_method                  Int?                          @default(0) @db.SmallInt
+  calc_method                 Int?                          @default(0) @db.SmallInt
+  rounding_method             Int?                          @default(0) @db.SmallInt
+  note                        String?                       @db.VarChar(200)
+  memo                        String?
+  image_path                  String?
+  is_active                   Boolean                       @default(true)
+  created_at                  DateTime                      @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime                      @default(now()) @db.Timestamptz(6)
+  billing_records             billing_records[]
+  company_settings            company_settings[]
+  customer_delivery_addresses customer_delivery_addresses[]
+  customers                   customers?                    @relation("customersTocustomers", fields: [billing_customer_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  other_customers             customers[]                   @relation("customersTocustomers")
+  customer_category_1         customer_category_1?          @relation(fields: [category1_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  customer_category_2         customer_category_2?          @relation(fields: [category2_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  customer_category_3         customer_category_3?          @relation(fields: [category3_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  regions                     regions?                      @relation(fields: [region_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  staff                       staff?                        @relation(fields: [staff_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  quotations                  quotations[]
+  receipt_vouchers            receipt_vouchers[]
+  sales_vouchers              sales_vouchers[]
+
+  @@index([name1(ops: raw("gin_trgm_ops"))], map: "idx_customers_name_trgm", type: Gin)
+}
+
+model departments {
+  code  String  @id @db.VarChar(10)
+  name  String  @db.VarChar(40)
+  staff staff[]
+}
+
+model inventory_movements {
+  id             BigInt   @id @default(autoincrement())
+  product_code   String   @db.VarChar(15)
+  movement_date  DateTime @db.Date
+  movement_type  String   @db.VarChar(10)
+  source_table   String?  @db.VarChar(30)
+  source_id      BigInt?
+  quantity_in    Decimal  @default(0) @db.Decimal(14, 3)
+  quantity_out   Decimal  @default(0) @db.Decimal(14, 3)
+  unit_cost      Decimal? @db.Decimal(12, 4)
+  balance_qty    Decimal? @db.Decimal(14, 3)
+  balance_amount Decimal? @db.Decimal(14, 2)
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  products       products @relation(fields: [product_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([product_code, movement_date], map: "idx_inventory_movements_product_date")
+}
+
+model payment_closings {
+  id              BigInt            @id @default(autoincrement())
+  closing_day     Int               @db.SmallInt
+  as_of_date      DateTime          @db.Date
+  executed_at     DateTime          @default(now()) @db.Timestamptz(6)
+  executed_by     String?           @db.Uuid
+  is_reversed     Boolean           @default(false)
+  users           users?            @relation(fields: [executed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payment_records payment_records[]
+}
+
+model payment_records {
+  id               BigInt           @id @default(autoincrement())
+  closing_id       BigInt
+  supplier_code    String           @db.VarChar(10)
+  period_from      DateTime?        @db.Date
+  period_to        DateTime         @db.Date
+  previous_balance Decimal          @default(0) @db.Decimal(14, 2)
+  purchase_amount  Decimal          @default(0) @db.Decimal(14, 2)
+  payment_amount   Decimal          @default(0) @db.Decimal(14, 2)
+  tax_amount       Decimal          @default(0) @db.Decimal(14, 2)
+  payable_amount   Decimal          @default(0) @db.Decimal(14, 2)
+  created_at       DateTime         @default(now()) @db.Timestamptz(6)
+  payment_closings payment_closings @relation(fields: [closing_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  suppliers        suppliers        @relation(fields: [supplier_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model payment_voucher_lines {
+  id               BigInt           @id @default(autoincrement())
+  voucher_id       BigInt
+  line_no          Int              @db.SmallInt
+  category         String?          @db.VarChar(10)
+  amount           Decimal          @db.Decimal(14, 2)
+  note             String?          @db.VarChar(100)
+  bank_code        String?          @db.VarChar(10)
+  bill_due_date    DateTime?        @db.Date
+  banks            banks?           @relation(fields: [bank_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  payment_vouchers payment_vouchers @relation(fields: [voucher_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([voucher_id, line_no])
+}
+
+model payment_vouchers {
+  id                    BigInt                  @id @default(autoincrement())
+  voucher_no            String                  @unique @db.VarChar(15)
+  supplier_code         String                  @db.VarChar(10)
+  voucher_date          DateTime                @db.Date
+  period_from           DateTime?               @db.Date
+  period_to             DateTime?               @db.Date
+  billed_amount         Decimal?                @db.Decimal(14, 2)
+  purchase_amount       Decimal?                @db.Decimal(14, 2)
+  tax_amount            Decimal?                @db.Decimal(14, 2)
+  subtotal_amount       Decimal                 @default(0) @db.Decimal(14, 2)
+  created_by            String?                 @db.Uuid
+  created_at            DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime                @default(now()) @db.Timestamptz(6)
+  payment_voucher_lines payment_voucher_lines[]
+  users                 users?                  @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  suppliers             suppliers               @relation(fields: [supplier_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([supplier_code, voucher_date], map: "idx_payment_vouchers_supplier_date")
+}
+
+model product_category_1 {
+  code     String     @id @db.VarChar(10)
+  name     String     @db.VarChar(40)
+  products products[]
+}
+
+model product_category_2 {
+  code     String     @id @db.VarChar(10)
+  name     String     @db.VarChar(40)
+  products products[]
+}
+
+model product_category_3 {
+  code     String     @id @db.VarChar(10)
+  name     String     @db.VarChar(40)
+  products products[]
+}
+
+model product_class_major {
+  code                 String                 @id @db.VarChar(10)
+  name                 String                 @db.VarChar(40)
+  product_class_middle product_class_middle[]
+  products             products[]
+}
+
+model product_class_middle {
+  code                String                @id @db.VarChar(10)
+  major_code          String                @db.VarChar(10)
+  name                String                @db.VarChar(40)
+  product_class_major product_class_major   @relation(fields: [major_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  product_class_minor product_class_minor[]
+  products            products[]
+}
+
+model product_class_minor {
+  code                 String               @id @db.VarChar(10)
+  middle_code          String               @db.VarChar(10)
+  name                 String               @db.VarChar(40)
+  product_class_middle product_class_middle @relation(fields: [middle_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  products             products[]
+}
+
+model products {
+  code                                               String                   @id @db.VarChar(15)
+  reference_code                                     String?                  @db.VarChar(15)
+  name                                               String                   @db.VarChar(80)
+  spec                                               String?                  @db.VarChar(80)
+  kana                                               String?                  @db.VarChar(80)
+  unit_code                                          String?                  @db.VarChar(10)
+  tax_category                                       Int?                     @default(0) @db.SmallInt
+  stock_managed                                      Boolean                  @default(true)
+  cost_category                                      Int?                     @default(0) @db.SmallInt
+  major_class_code                                   String?                  @db.VarChar(10)
+  middle_class_code                                  String?                  @db.VarChar(10)
+  minor_class_code                                   String?                  @db.VarChar(10)
+  category1_code                                     String?                  @db.VarChar(10)
+  category2_code                                     String?                  @db.VarChar(10)
+  category3_code                                     String?                  @db.VarChar(10)
+  sale_price_1                                       Decimal?                 @db.Decimal(12, 2)
+  sale_price_2                                       Decimal?                 @db.Decimal(12, 2)
+  sale_price_3                                       Decimal?                 @db.Decimal(12, 2)
+  sale_price_4                                       Decimal?                 @db.Decimal(12, 2)
+  sale_price_5                                       Decimal?                 @db.Decimal(12, 2)
+  standard_cost                                      Decimal?                 @db.Decimal(12, 2)
+  last_cost                                          Decimal?                 @db.Decimal(12, 2)
+  moving_avg_cost                                    Decimal?                 @db.Decimal(12, 4)
+  stock_qty                                          Decimal                  @default(0) @db.Decimal(14, 3)
+  stock_amount                                       Decimal                  @default(0) @db.Decimal(14, 2)
+  last_purchased_on                                  DateTime?                @db.Date
+  last_sold_on                                       DateTime?                @db.Date
+  memo                                               String?
+  image_path                                         String?
+  is_active                                          Boolean                  @default(true)
+  created_at                                         DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at                                         DateTime                 @default(now()) @db.Timestamptz(6)
+  inventory_movements                                inventory_movements[]
+  product_category_1                                 product_category_1?      @relation(fields: [category1_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  product_category_2                                 product_category_2?      @relation(fields: [category2_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  product_category_3                                 product_category_3?      @relation(fields: [category3_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  product_class_major                                product_class_major?     @relation(fields: [major_class_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  product_class_middle                               product_class_middle?    @relation(fields: [middle_class_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  product_class_minor                                product_class_minor?     @relation(fields: [minor_class_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  units                                              units?                   @relation(fields: [unit_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  purchase_voucher_lines                             purchase_voucher_lines[]
+  quotation_lines                                    quotation_lines[]
+  sales_voucher_lines                                sales_voucher_lines[]
+  set_products_set_products_component_codeToproducts set_products[]           @relation("set_products_component_codeToproducts")
+  set_products_set_products_set_codeToproducts       set_products[]           @relation("set_products_set_codeToproducts")
+
+  @@index([name(ops: raw("gin_trgm_ops"))], map: "idx_products_name_trgm", type: Gin)
+}
+
+model purchase_voucher_lines {
+  id                BigInt            @id @default(autoincrement())
+  voucher_id        BigInt
+  line_no           Int               @db.SmallInt
+  category          String?           @db.VarChar(10)
+  product_code      String?           @db.VarChar(15)
+  product_name      String            @db.VarChar(80)
+  spec              String?           @db.VarChar(80)
+  unit              String?           @db.VarChar(10)
+  quantity          Decimal           @default(0) @db.Decimal(12, 3)
+  cost_price        Decimal?          @db.Decimal(12, 2)
+  cost_amount       Decimal?          @db.Decimal(14, 2)
+  note              String?           @db.VarChar(100)
+  products          products?         @relation(fields: [product_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  purchase_vouchers purchase_vouchers @relation(fields: [voucher_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([voucher_id, line_no])
+}
+
+model purchase_vouchers {
+  id                     BigInt                   @id @default(autoincrement())
+  voucher_no             String                   @unique @db.VarChar(15)
+  supplier_code          String                   @db.VarChar(10)
+  voucher_date           DateTime                 @db.Date
+  tax_rate               Decimal                  @db.Decimal(5, 2)
+  staff_code             String?                  @db.VarChar(10)
+  remarks                String?                  @db.VarChar(200)
+  subtotal_amount        Decimal                  @default(0) @db.Decimal(14, 2)
+  tax_amount             Decimal                  @default(0) @db.Decimal(14, 2)
+  total_amount           Decimal                  @default(0) @db.Decimal(14, 2)
+  is_settled             Boolean                  @default(false)
+  created_by             String?                  @db.Uuid
+  created_at             DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime                 @default(now()) @db.Timestamptz(6)
+  purchase_voucher_lines purchase_voucher_lines[]
+  users                  users?                   @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  staff                  staff?                   @relation(fields: [staff_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  suppliers              suppliers                @relation(fields: [supplier_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([supplier_code, voucher_date], map: "idx_purchase_vouchers_supplier_date")
+}
+
+model quotation_lines {
+  id           BigInt     @id @default(autoincrement())
+  quotation_id BigInt
+  line_no      Int        @db.SmallInt
+  level        Int        @default(0) @db.SmallInt
+  category     String?    @db.VarChar(10)
+  product_code String?    @db.VarChar(15)
+  product_name String?    @db.VarChar(40)
+  spec         String?    @db.VarChar(40)
+  unit         String?    @db.VarChar(10)
+  quantity     Decimal?   @db.Decimal(12, 3)
+  cost_price   Decimal?   @db.Decimal(12, 2)
+  cost_amount  Decimal?   @db.Decimal(14, 2)
+  quote_price  Decimal?   @db.Decimal(12, 2)
+  quote_amount Decimal?   @db.Decimal(14, 2)
+  gross_profit Decimal?   @db.Decimal(14, 2)
+  products     products?  @relation(fields: [product_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  quotations   quotations @relation(fields: [quotation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([quotation_id, line_no])
+}
+
+model quotations {
+  id                BigInt            @id @default(autoincrement())
+  voucher_no        String            @unique @db.VarChar(15)
+  reference_no      String?           @db.VarChar(15)
+  customer_code     String            @db.VarChar(10)
+  staff_code        String?           @db.VarChar(10)
+  sub_no            String?           @db.VarChar(15)
+  quotation_date    DateTime          @db.Date
+  counterpart_staff String?           @db.VarChar(60)
+  project_name1     String?           @db.VarChar(60)
+  project_name2     String?           @db.VarChar(60)
+  delivery_terms    String?           @db.VarChar(36)
+  delivery_place    String?           @db.VarChar(36)
+  freight_terms     String?           @db.VarChar(36)
+  payment_terms     String?           @db.VarChar(36)
+  valid_until_text  String?           @db.VarChar(36)
+  remarks           String?           @db.VarChar(88)
+  is_hierarchical   Boolean           @default(false)
+  quote_amount      Decimal           @default(0) @db.Decimal(14, 2)
+  cost_amount       Decimal           @default(0) @db.Decimal(14, 2)
+  gross_profit      Decimal           @default(0) @db.Decimal(14, 2)
+  tax_calculated    Boolean           @default(true)
+  created_by        String?           @db.Uuid
+  created_at        DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime          @default(now()) @db.Timestamptz(6)
+  quotation_lines   quotation_lines[]
+  users             users?            @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customers         customers         @relation(fields: [customer_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  staff             staff?            @relation(fields: [staff_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([customer_code, quotation_date], map: "idx_quotations_customer_date")
+}
+
+model receipt_voucher_lines {
+  id               BigInt           @id @default(autoincrement())
+  voucher_id       BigInt
+  line_no          Int              @db.SmallInt
+  category         String?          @db.VarChar(10)
+  amount           Decimal          @db.Decimal(14, 2)
+  note             String?          @db.VarChar(100)
+  bank_code        String?          @db.VarChar(10)
+  bill_due_date    DateTime?        @db.Date
+  bill_no          String?          @db.VarChar(30)
+  banks            banks?           @relation(fields: [bank_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  receipt_vouchers receipt_vouchers @relation(fields: [voucher_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([voucher_id, line_no])
+}
+
+model receipt_vouchers {
+  id                    BigInt                  @id @default(autoincrement())
+  voucher_no            String                  @unique @db.VarChar(15)
+  customer_code         String                  @db.VarChar(10)
+  voucher_date          DateTime                @db.Date
+  period_from           DateTime?               @db.Date
+  period_to             DateTime?               @db.Date
+  billed_amount         Decimal?                @db.Decimal(14, 2)
+  sales_amount          Decimal?                @db.Decimal(14, 2)
+  tax_amount            Decimal?                @db.Decimal(14, 2)
+  subtotal_amount       Decimal                 @default(0) @db.Decimal(14, 2)
+  print_receipt         Boolean                 @default(false)
+  created_by            String?                 @db.Uuid
+  created_at            DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime                @default(now()) @db.Timestamptz(6)
+  receipt_voucher_lines receipt_voucher_lines[]
+  users                 users?                  @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customers             customers               @relation(fields: [customer_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([customer_code, voucher_date], map: "idx_receipt_vouchers_customer_date")
+}
+
+model regions {
+  code      String      @id @db.VarChar(10)
+  name      String      @db.VarChar(40)
+  customers customers[]
+}
+
+model remarks_master {
+  code String @id @db.VarChar(10)
+  text String @db.VarChar(100)
+}
+
+model sales_voucher_lines {
+  id             BigInt         @id @default(autoincrement())
+  voucher_id     BigInt
+  line_no        Int            @db.SmallInt
+  category       String?        @db.VarChar(10)
+  product_code   String?        @db.VarChar(15)
+  product_name   String         @db.VarChar(80)
+  spec           String?        @db.VarChar(80)
+  unit           String?        @db.VarChar(10)
+  quantity       Decimal        @default(0) @db.Decimal(12, 3)
+  cost_price     Decimal?       @db.Decimal(12, 2)
+  cost_amount    Decimal?       @db.Decimal(14, 2)
+  sale_price     Decimal?       @db.Decimal(12, 2)
+  sale_amount    Decimal?       @db.Decimal(14, 2)
+  gross_profit   Decimal?       @db.Decimal(14, 2)
+  tax_amount     Decimal?       @db.Decimal(14, 2)
+  note           String?        @db.VarChar(100)
+  note2          String?        @db.VarChar(100)
+  products       products?      @relation(fields: [product_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  sales_vouchers sales_vouchers @relation(fields: [voucher_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([voucher_id, line_no])
+}
+
+model sales_vouchers {
+  id                          BigInt                       @id @default(autoincrement())
+  voucher_no                  String                       @unique @db.VarChar(15)
+  is_cash_sale                Boolean                      @default(false)
+  quotation_no                String?                      @db.VarChar(15)
+  customer_code               String                       @db.VarChar(10)
+  delivery_address_id         Int?
+  voucher_date                DateTime                     @db.Date
+  entered_on                  DateTime?                    @db.Date
+  tax_rate                    Decimal                      @db.Decimal(5, 2)
+  staff_code                  String?                      @db.VarChar(10)
+  remarks                     String?                      @db.VarChar(200)
+  sales_amount                Decimal                      @default(0) @db.Decimal(14, 2)
+  cost_amount                 Decimal                      @default(0) @db.Decimal(14, 2)
+  tax_amount                  Decimal                      @default(0) @db.Decimal(14, 2)
+  gross_profit                Decimal                      @default(0) @db.Decimal(14, 2)
+  is_printed                  Boolean                      @default(false)
+  is_billed                   Boolean                      @default(false)
+  created_by                  String?                      @db.Uuid
+  created_at                  DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime                     @default(now()) @db.Timestamptz(6)
+  sales_voucher_lines         sales_voucher_lines[]
+  users                       users?                       @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customers                   customers                    @relation(fields: [customer_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  customer_delivery_addresses customer_delivery_addresses? @relation(fields: [delivery_address_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  staff                       staff?                       @relation(fields: [staff_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([customer_code, voucher_date], map: "idx_sales_vouchers_customer_date")
+  @@index([staff_code, voucher_date], map: "idx_sales_vouchers_staff_date")
+}
+
+model set_products {
+  set_code                                       String   @db.VarChar(15)
+  seq                                            Int      @default(1) @db.SmallInt
+  component_code                                 String   @db.VarChar(15)
+  quantity                                       Decimal  @default(1) @db.Decimal(10, 3)
+  products_set_products_component_codeToproducts products @relation("set_products_component_codeToproducts", fields: [component_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  products_set_products_set_codeToproducts       products @relation("set_products_set_codeToproducts", fields: [set_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([set_code, seq])
+}
+
+model staff {
+  code              String              @id @db.VarChar(10)
+  name              String              @db.VarChar(40)
+  department_code   String?             @db.VarChar(10)
+  is_active         Boolean             @default(true)
+  customers         customers[]
+  purchase_vouchers purchase_vouchers[]
+  quotations        quotations[]
+  sales_vouchers    sales_vouchers[]
+  departments       departments?        @relation(fields: [department_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  staff_budgets     staff_budgets[]
+  suppliers         suppliers[]
+  users             users[]
+}
+
+model staff_budgets {
+  staff_code    String  @db.VarChar(10)
+  year_month    String  @db.Char(7)
+  budget_amount Decimal @default(0) @db.Decimal(14, 2)
+  staff         staff   @relation(fields: [staff_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([staff_code, year_month])
+}
+
+model suppliers {
+  code              String              @id @db.VarChar(10)
+  reference_code    String?             @db.VarChar(10)
+  name1             String              @db.VarChar(60)
+  name2             String?             @db.VarChar(60)
+  short_name        String?             @db.VarChar(30)
+  kana              String?             @db.VarChar(60)
+  closing_day       Int?                @db.SmallInt
+  payment_day       Int?                @db.SmallInt
+  staff_code        String?             @db.VarChar(10)
+  postal_code       String?             @db.VarChar(10)
+  address1          String?             @db.VarChar(100)
+  address2          String?             @db.VarChar(100)
+  phone             String?             @db.VarChar(20)
+  fax               String?             @db.VarChar(20)
+  mobile            String?             @db.VarChar(20)
+  trade_started_on  DateTime?           @db.Date
+  opening_balance   Decimal?            @default(0) @db.Decimal(14, 2)
+  tax_method        Int?                @default(0) @db.SmallInt
+  calc_method       Int?                @default(0) @db.SmallInt
+  rounding_method   Int?                @default(0) @db.SmallInt
+  note              String?             @db.VarChar(200)
+  memo              String?
+  image_path        String?
+  is_active         Boolean             @default(true)
+  created_at        DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime            @default(now()) @db.Timestamptz(6)
+  payment_records   payment_records[]
+  payment_vouchers  payment_vouchers[]
+  purchase_vouchers purchase_vouchers[]
+  staff             staff?              @relation(fields: [staff_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model tax_rate_history {
+  id        Int      @id @default(autoincrement())
+  starts_on DateTime @unique @db.Date
+  rate      Decimal  @db.Decimal(5, 2)
+}
+
+model units {
+  code     String     @id @db.VarChar(10)
+  name     String     @db.VarChar(20)
+  products products[]
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model users {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  login_id          String              @unique @db.VarChar(50)
+  display_name      String              @db.VarChar(100)
+  password_hash     String
+  role              String              @default("staff") @db.VarChar(20)
+  staff_code        String?             @db.VarChar(10)
+  is_active         Boolean             @default(true)
+  created_at        DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime            @default(now()) @db.Timestamptz(6)
+  billing_closings  billing_closings[]
+  payment_closings  payment_closings[]
+  payment_vouchers  payment_vouchers[]
+  purchase_vouchers purchase_vouchers[]
+  quotations        quotations[]
+  receipt_vouchers  receipt_vouchers[]
+  sales_vouchers    sales_vouchers[]
+  staff             staff?              @relation(fields: [staff_code], references: [code], onDelete: NoAction, onUpdate: NoAction, map: "fk_users_staff")
+}
+
+model voucher_sequences {
+  voucher_type String @id @db.VarChar(20)
+  last_number  BigInt @default(0)
+}

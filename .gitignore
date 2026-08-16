@@ -1,0 +1,10 @@
+arai-hanbai.tar.gz
+*.tar.gz
+
+# AIコーディングツール関連の付随ファイル（デプロイには不要）
+app/.agents/
+app/.claude/
+app/.windsurf/
+app/AGENTS.md
+app/CLAUDE.md
+app/skills-lock.json
