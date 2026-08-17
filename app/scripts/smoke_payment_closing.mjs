@@ -45,8 +45,8 @@ try {
 
   // 1. 仕入支払更新の対象になる仕入伝票を作成する（2 * 1000 = 2,000, 税10% = 200 → +2,200）
   await page.goto(`${BASE_URL}/purchase-vouchers/new`);
-  await page.waitForSelector('select >> nth=0');
-  await page.locator("select").first().selectOption(SUPPLIER_CODE);
+  await page.waitForSelector('input[placeholder*="F8で検索"]');
+  await page.fill('input[placeholder*="F8で検索"]', SUPPLIER_CODE);
   const firstRow = page.locator("tbody tr").first();
   await firstRow.locator('input[placeholder*="商品名"]').fill("仕入支払更新テスト商品");
   const numberInputs = firstRow.locator('input[type="number"]');

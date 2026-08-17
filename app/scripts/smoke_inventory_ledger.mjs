@@ -42,13 +42,11 @@ try {
 
   // 2. 仕入伝票を作成（入庫: 数量10, 仕入単価200 → 2,000）
   await page.goto(`${BASE_URL}/purchase-vouchers/new`);
-  await page.waitForSelector('select >> nth=0');
-  const supplierValues = await page
-    .locator("select")
-    .first()
-    .locator("option")
-    .evaluateAll((opts) => opts.map((o) => o.value).filter(Boolean));
-  await page.locator("select").first().selectOption(supplierValues[0]);
+  await page.waitForSelector('input[placeholder*="F8で検索"]');
+  await page.locator('input[placeholder*="F8で検索"]').first().press("F8");
+  const firstSupplierRow = page.locator('[data-testid="search-dialog"] tbody tr').first();
+  await firstSupplierRow.waitFor();
+  await firstSupplierRow.click();
   const purchaseRow = page.locator("tbody tr").first();
   await purchaseRow.locator('input[placeholder*="商品名"]').fill(PRODUCT_CODE);
   await page.waitForTimeout(1200);
@@ -66,13 +64,11 @@ try {
 
   // 3. 売上伝票を作成（出庫: 数量4, 仕入原価100 → 400、売価は任意）
   await page.goto(`${BASE_URL}/sales-vouchers/new`);
-  await page.waitForSelector('select >> nth=0');
-  const customerValues = await page
-    .locator("select")
-    .first()
-    .locator("option")
-    .evaluateAll((opts) => opts.map((o) => o.value).filter(Boolean));
-  await page.locator("select").first().selectOption(customerValues[0]);
+  await page.waitForSelector('input[placeholder*="F8で検索"]');
+  await page.locator('input[placeholder*="F8で検索"]').first().press("F8");
+  const firstCustomerRow = page.locator('[data-testid="search-dialog"] tbody tr').first();
+  await firstCustomerRow.waitFor();
+  await firstCustomerRow.click();
   const salesRow = page.locator("tbody tr").first();
   await salesRow.locator('input[placeholder*="商品名"]').fill(PRODUCT_CODE);
   await page.waitForTimeout(1200);

@@ -9,6 +9,7 @@ import {
   type ProductSearchResult,
   type SalesVoucherInput,
 } from "@/lib/actions/sales-vouchers";
+import { SearchDialog, openOnF8 } from "@/components/SearchDialog";
 
 type CustomerOption = { code: string; name1: string; staff_code: string | null; rounding_method: number | null };
 type StaffOption = { code: string; name: string };
@@ -74,6 +75,7 @@ export function SalesVoucherForm({
   const [isCashSale, setIsCashSale] = useState(defaults?.is_cash_sale ?? false);
   const [remarks, setRemarks] = useState(defaults?.remarks ?? "");
   const [lines, setLines] = useState<LineState[]>(defaults?.lines?.length ? defaults.lines : [emptyLine()]);
+  const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
 
   const selectedCustomer = customers.find((c) => c.code === customerCode);
 
@@ -168,20 +170,18 @@ export function SalesVoucherForm({
       <section className="rounded-lg border border-slate-200 bg-white p-6">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-600">得意先</span>
-            <select
+            <span className="mb-1 block text-xs font-medium text-slate-600">得意先（F8で検索）</span>
+            <input
               value={customerCode}
               onChange={(e) => handleCustomerChange(e.target.value)}
+              onKeyDown={openOnF8(() => setCustomerDialogOpen(true))}
+              placeholder="コード入力 or F8で検索"
               required
               className="input"
-            >
-              <option value="">選択してください</option>
-              {customers.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.code} - {c.name1}
-                </option>
-              ))}
-            </select>
+            />
+            <span className="mt-1 block truncate text-xs text-slate-500">
+              {customerCode ? (selectedCustomer ? selectedCustomer.name1 : "該当する得意先が見つかりません") : ""}
+            </span>
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-slate-600">伝票日付</span>
@@ -285,6 +285,27 @@ export function SalesVoucherForm({
           キャンセル
         </a>
       </div>
+
+      <SearchDialog
+        open={customerDialogOpen}
+        title="得意先検索"
+        items={customers}
+        filterFn={(c, q) => {
+          const qq = q.toLowerCase();
+          return c.code.toLowerCase().includes(qq) || c.name1.toLowerCase().includes(qq);
+        }}
+        getKey={(c) => c.code}
+        columns={[
+          { header: "コード", render: (c) => c.code, className: "font-mono text-slate-500" },
+          { header: "得意先名", render: (c) => c.name1 },
+        ]}
+        onSelect={(c) => {
+          handleCustomerChange(c.code);
+          setCustomerDialogOpen(false);
+        }}
+        onClose={() => setCustomerDialogOpen(false)}
+        placeholder="得意先コード or 得意先名で検索"
+      />
     </form>
   );
 }
@@ -301,6 +322,7 @@ function LineRow({
   const [query, setQuery] = useState(line.product_name);
   const [results, setResults] = useState<ProductSearchResult[]>([]);
   const [open, setOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -348,7 +370,8 @@ function LineRow({
           onChange={(e) => handleQueryChange(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
-          placeholder="商品名 or コードで検索"
+          onKeyDown={openOnF8(() => setDialogOpen(true))}
+          placeholder="商品名 or コードで検索（F8で検索ダイアログ）"
           className="input"
         />
         {open && (
@@ -367,6 +390,24 @@ function LineRow({
             ))}
           </ul>
         )}
+        <SearchDialog
+          open={dialogOpen}
+          title="商品検索"
+          fetchResults={searchProducts}
+          getKey={(p) => p.code}
+          columns={[
+            { header: "コード", render: (p) => p.code, className: "font-mono text-slate-500" },
+            { header: "商品名", render: (p) => p.name },
+            { header: "規格", render: (p) => p.spec ?? "" },
+            { header: "売上単価1", render: (p) => p.sale_price_1 ?? "", className: "text-right" },
+          ]}
+          onSelect={(p) => {
+            selectProduct(p);
+            setDialogOpen(false);
+          }}
+          onClose={() => setDialogOpen(false)}
+          placeholder="商品コード or 商品名で検索"
+        />
       </td>
       <td className="py-1 pr-2">
         <input

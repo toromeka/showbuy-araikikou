@@ -65,8 +65,8 @@ try {
 
   // 1. 売上伝票を作成 → 納品書PDF
   await page.goto(`${BASE_URL}/sales-vouchers/new`);
-  await page.waitForSelector('select >> nth=0');
-  await page.locator("select").first().selectOption(CUSTOMER_CODE);
+  await page.waitForSelector('input[placeholder*="F8で検索"]');
+  await page.fill('input[placeholder*="F8で検索"]', CUSTOMER_CODE);
   const svRow = page.locator("tbody tr").first();
   await svRow.locator('input[placeholder*="商品名"]').fill("帳票出力テスト商品");
   const svNumberInputs = svRow.locator('input[type="number"]');
@@ -86,8 +86,8 @@ try {
 
   // 1-b. 品番が7件を超える売上伝票 → 納品書が正・控とも2枚に分かれることを確認
   await page.goto(`${BASE_URL}/sales-vouchers/new`);
-  await page.waitForSelector('select >> nth=0');
-  await page.locator("select").first().selectOption(CUSTOMER_CODE);
+  await page.waitForSelector('input[placeholder*="F8で検索"]');
+  await page.fill('input[placeholder*="F8で検索"]', CUSTOMER_CODE);
   for (let i = 0; i < 9; i++) {
     if (i > 0) await page.click('button:has-text("+ 明細行を追加")');
     const row = page.locator("tbody tr").nth(i);
@@ -114,8 +114,8 @@ try {
 
   // 2. 見積書を作成 → 見積書PDF
   await page.goto(`${BASE_URL}/quotations/new`);
-  await page.waitForSelector('select >> nth=0');
-  await page.locator("select").first().selectOption(CUSTOMER_CODE);
+  await page.waitForSelector('input[placeholder*="F8で検索"]');
+  await page.fill('input[placeholder*="F8で検索"]', CUSTOMER_CODE);
   await page.fill('input[placeholder="案件名 1行目"]', "帳票出力テスト案件");
   const qRow = page.locator("tbody tr").first();
   await qRow.locator('input[placeholder*="品名"]').fill("帳票出力テスト部材");

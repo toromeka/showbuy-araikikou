@@ -7,6 +7,7 @@ import {
   updateReceiptVoucher,
   type ReceiptVoucherInput,
 } from "@/lib/actions/receipt-vouchers";
+import { SearchDialog, openOnF8 } from "@/components/SearchDialog";
 
 type CustomerOption = { code: string; name1: string };
 type BankOption = { code: string; name: string };
@@ -73,6 +74,9 @@ export function ReceiptVoucherForm({
   const [taxAmount, setTaxAmount] = useState(defaults?.tax_amount ?? "");
   const [printReceipt, setPrintReceipt] = useState(defaults?.print_receipt ?? false);
   const [lines, setLines] = useState<LineState[]>(defaults?.lines?.length ? defaults.lines : [emptyLine()]);
+  const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
+
+  const selectedCustomer = customers.find((c) => c.code === customerCode);
 
   const totalAmount = useMemo(
     () => lines.reduce((sum, l) => sum + (Number(l.amount) || 0), 0),
@@ -132,20 +136,18 @@ export function ReceiptVoucherForm({
       <section className="rounded-lg border border-slate-200 bg-white p-6">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-600">得意先</span>
-            <select
+            <span className="mb-1 block text-xs font-medium text-slate-600">得意先（F8で検索）</span>
+            <input
               value={customerCode}
               onChange={(e) => setCustomerCode(e.target.value)}
+              onKeyDown={openOnF8(() => setCustomerDialogOpen(true))}
+              placeholder="コード入力 or F8で検索"
               required
               className="input"
-            >
-              <option value="">選択してください</option>
-              {customers.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.code} - {c.name1}
-                </option>
-              ))}
-            </select>
+            />
+            <span className="mt-1 block truncate text-xs text-slate-500">
+              {customerCode ? (selectedCustomer ? selectedCustomer.name1 : "該当する得意先が見つかりません") : ""}
+            </span>
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-slate-600">伝票日付</span>
@@ -274,6 +276,27 @@ export function ReceiptVoucherForm({
           キャンセル
         </a>
       </div>
+
+      <SearchDialog
+        open={customerDialogOpen}
+        title="得意先検索"
+        items={customers}
+        filterFn={(c, q) => {
+          const qq = q.toLowerCase();
+          return c.code.toLowerCase().includes(qq) || c.name1.toLowerCase().includes(qq);
+        }}
+        getKey={(c) => c.code}
+        columns={[
+          { header: "コード", render: (c) => c.code, className: "font-mono text-slate-500" },
+          { header: "得意先名", render: (c) => c.name1 },
+        ]}
+        onSelect={(c) => {
+          setCustomerCode(c.code);
+          setCustomerDialogOpen(false);
+        }}
+        onClose={() => setCustomerDialogOpen(false)}
+        placeholder="得意先コード or 得意先名で検索"
+      />
     </form>
   );
 }

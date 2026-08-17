@@ -26,15 +26,15 @@ try {
   log("login", true);
 
   await page.goto(`${BASE_URL}/payment-vouchers/new`);
-  await page.waitForSelector('select >> nth=0');
+  await page.waitForSelector('input[placeholder*="F8で検索"]');
 
-  // 仕入先を選択（一覧の1番目の実データを使う）
-  const supplierSelect = page.locator("select").first();
-  const optionValues = await supplierSelect.locator("option").evaluateAll((opts) =>
-    opts.map((o) => o.value).filter(Boolean),
-  );
-  await supplierSelect.selectOption(optionValues[0]);
-  log("supplier selected", true, optionValues[0]);
+  // 仕入先をF8検索ダイアログから選択（一覧先頭の実データを使う）
+  await page.locator('input[placeholder*="F8で検索"]').first().press("F8");
+  const firstSupplierRow = page.locator('[data-testid="search-dialog"] tbody tr').first();
+  await firstSupplierRow.waitFor();
+  const supplierCode = (await firstSupplierRow.locator("td").first().textContent())?.trim();
+  await firstSupplierRow.click();
+  log("supplier selected via F8 dialog", true, supplierCode);
 
   // 参考項目（請求金額）を入力
   await page.fill('input[step="0.01"] >> nth=0', "4400");
