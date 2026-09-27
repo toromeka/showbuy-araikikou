@@ -22,6 +22,11 @@ RUN npx prisma generate
 # （実際の接続情報は起動時に環境変数として渡す）
 ENV DATABASE_URL="postgresql://user:password@localhost:5432/placeholder"
 ENV AUTH_SECRET="build-time-placeholder-not-used-at-runtime"
+
+# ホーム画面に表示するバージョン（コミット番号）。コンテナ内には.gitが無いため、
+# Railwayが自動で渡すRAILWAY_GIT_COMMIT_SHA、または手動の --build-arg APP_COMMIT_SHA=... から取得する。
+ARG RAILWAY_GIT_COMMIT_SHA
+ARG APP_COMMIT_SHA
 RUN npm run build
 
 ENV NODE_ENV=production
