@@ -101,6 +101,21 @@ try {
   text = await page.textContent("body");
   log("purchase voucher now settled (支払更新済み, no 編集/削除)", text.includes("支払更新済み") && !text.includes("編集"));
 
+  // 4-b. 同じ締日・基準日でもう一度プレビューしても、締め済みの仕入先は対象に出てこない
+  //      （前回残高だけの実績が重複して作られ、支払額が二重計上されるのを防ぐ）
+  await page.goto(`${BASE_URL}/payment-closings/new`);
+  await page.waitForSelector("select");
+  await page.locator("select").selectOption("31");
+  await page.click('button:has-text("プレビュー")');
+  await page.waitForSelector("text=プレビュー結果", { timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(500);
+  text = await page.textContent("body");
+  const reappeared = (await page.locator("tbody tr", { hasText: SUPPLIER_CODE }).count()) > 0;
+  log(
+    "re-preview for same date excludes already-closed supplier (二重計上防止)",
+    !reappeared && (text.includes("締め済みのため対象外") || text.includes("締め済みです")),
+  );
+
   // 5. 一覧で有効と表示されるか確認
   await page.goto(`${BASE_URL}/payment-closings`);
   await page.waitForSelector("table");

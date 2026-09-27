@@ -26,6 +26,7 @@ export type PaymentPreviewItem = {
 export type PaymentPreviewResult = {
   items: PaymentPreviewItem[];
   skippedZeroCount: number;
+  skippedClosedCount: number;
   error?: string;
 };
 
@@ -43,7 +44,7 @@ async function computeItems(
   client: TxClient,
   closingDay: ClosingDayFilter,
   asOfDateStr: string,
-): Promise<{ items: PaymentPreviewItem[]; skippedZeroCount: number }> {
+): Promise<{ items: PaymentPreviewItem[]; skippedZeroCount: number; skippedClosedCount: number }> {
   const asOfDate = toDateOnly(asOfDateStr);
 
   const companySettings = await client.company_settings.findUnique({ where: { id: 1 } });
@@ -56,6 +57,7 @@ async function computeItems(
 
   const items: PaymentPreviewItem[] = [];
   let skippedZeroCount = 0;
+  let skippedClosedCount = 0;
 
   for (const supplier of suppliers) {
     const effectiveClosingDay = supplier.closing_day ?? defaultClosingDay;
@@ -65,6 +67,13 @@ async function computeItems(
       where: { supplier_code: supplier.code, payment_closings: { is_reversed: false } },
       orderBy: { period_to: "desc" },
     });
+
+    // 基準日が前回締めの終了日以前なら、その期間は締め済み。もう一度締めると前回請求残だけの
+    // 実績（＝同じ金額の請求書）が重複して作られてしまうため対象外にする。
+    if (prevRecord && asOfDate.getTime() <= prevRecord.period_to.getTime()) {
+      skippedClosedCount += 1;
+      continue;
+    }
 
     const periodFrom = prevRecord ? addDays(prevRecord.period_to, 1) : null;
     const periodTo = asOfDate;
@@ -115,7 +124,7 @@ async function computeItems(
     });
   }
 
-  return { items, skippedZeroCount };
+  return { items, skippedZeroCount, skippedClosedCount };
 }
 
 export async function previewPaymentClosing(
@@ -123,11 +132,10 @@ export async function previewPaymentClosing(
   asOfDate: string,
 ): Promise<PaymentPreviewResult> {
   const session = await auth();
-  if (!session?.user) return { items: [], skippedZeroCount: 0, error: "ログインが必要です。" };
-  if (!asOfDate) return { items: [], skippedZeroCount: 0, error: "基準日を入力してください。" };
+  if (!session?.user) return { items: [], skippedZeroCount: 0, skippedClosedCount: 0, error: "ログインが必要です。" };
+  if (!asOfDate) return { items: [], skippedZeroCount: 0, skippedClosedCount: 0, error: "基準日を入力してください。" };
 
-  const { items, skippedZeroCount } = await computeItems(prisma, closingDay, asOfDate);
-  return { items, skippedZeroCount };
+  return computeItems(prisma, closingDay, asOfDate);
 }
 
 export type PaymentClosingActionResult = { id?: string; error?: string };
@@ -148,7 +156,7 @@ export async function executePaymentClosing(
       await acquireClosingLock(tx, PAYMENT_CLOSING_LOCK_KEY);
       const { items } = await computeItems(tx, closingDay, asOfDate);
       if (items.length === 0) {
-        throw new Error("対象となる仕入先がありません（未払の仕入・残高がある仕入先が見つかりませんでした）。");
+        throw new Error("対象となる仕入先がありません（未払の仕入・残高がある仕入先が見つからないか、指定の基準日までは締め済みです）。");
       }
 
       const closing = await tx.payment_closings.create({
