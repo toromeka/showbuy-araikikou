@@ -93,7 +93,8 @@ export function QuotationForm({
   const [validUntilText, setValidUntilText] = useState(defaults?.valid_until_text ?? "");
   const [remarks, setRemarks] = useState(defaults?.remarks ?? "");
   const [isHierarchical, setIsHierarchical] = useState(defaults?.is_hierarchical ?? false);
-  const [taxCalculated, setTaxCalculated] = useState(defaults?.tax_calculated ?? true);
+  // 見積書はふだん税抜価格で出す（印刷の注記「上記価格には消費税は含まれておりません」）ため、新規作成時はチェックなしで始める
+  const [taxCalculated, setTaxCalculated] = useState(defaults?.tax_calculated ?? false);
   const [lines, setLines] = useState<LineState[]>(defaults?.lines?.length ? defaults.lines : [emptyLine()]);
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
 
