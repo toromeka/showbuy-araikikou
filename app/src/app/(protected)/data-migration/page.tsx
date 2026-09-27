@@ -1,9 +1,8 @@
-import { auth } from "@/auth";
+import { getCurrentUser, isAdmin } from "@/lib/current-user";
 import { MigrationForm } from "./MigrationForm";
 
 export default async function DataMigrationPage() {
-  const session = await auth();
-  if (session?.user?.role !== "admin") {
+  if (!isAdmin(await getCurrentUser())) {
     return <p className="text-sm text-slate-500">この画面は管理者のみ利用できます。</p>;
   }
 

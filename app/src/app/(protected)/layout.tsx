@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { auth, signOut } from "@/auth";
+import { signOut } from "@/auth";
+import { getCurrentUser, isAdmin } from "@/lib/current-user";
 
 const NAV_ITEMS = [
   { href: "/", label: "ホーム" },
@@ -18,10 +19,12 @@ const NAV_ITEMS = [
 ];
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
-  // データ移行（旧システムの伝票の取り込み）は管理者だけに表示する
-  const navItems =
-    session?.user?.role === "admin" ? [...NAV_ITEMS, { href: "/data-migration", label: "データ移行" }] : NAV_ITEMS;
+  // ログイン時の情報ではなくDBの最新の状態を見る（無効化・権限変更をすぐ反映するため）
+  const user = await getCurrentUser();
+  // ユーザー管理・データ移行（旧システムの伝票の取り込み）は管理者だけに表示する
+  const navItems = isAdmin(user)
+    ? [...NAV_ITEMS, { href: "/users", label: "ユーザー管理" }, { href: "/data-migration", label: "データ移行" }]
+    : NAV_ITEMS;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -41,7 +44,12 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           </nav>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-slate-500">{session?.user?.name} さん</span>
+          <span className="text-sm text-slate-500">{user?.name} さん</span>
+          {user && (
+            <Link href="/account/password" className="text-sm text-slate-500 hover:text-blue-600">
+              パスワード変更
+            </Link>
+          )}
           <form
             action={async () => {
               "use server";
@@ -54,7 +62,15 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           </form>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-6 py-8">
+        {user ? (
+          children
+        ) : (
+          <p className="rounded bg-red-50 px-4 py-3 text-sm text-red-700">
+            このアカウントは無効化されているため、利用できません。ログアウトして、管理者に確認してください。
+          </p>
+        )}
+      </main>
     </div>
   );
 }
