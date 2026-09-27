@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { acquireClosingLock } from "@/lib/closing-lock";
+import { closingTaxAmount } from "@/lib/closing-tax";
 import type { Prisma } from "@/generated/prisma/client";
 
 type TxClient = Prisma.TransactionClient;
@@ -78,14 +79,15 @@ async function computeItems(
     const periodFrom = prevRecord ? addDays(prevRecord.period_to, 1) : null;
     const periodTo = asOfDate;
 
-    const purchaseAgg = await client.purchase_vouchers.aggregate({
+    const purchaseByRate = await client.purchase_vouchers.groupBy({
+      by: ["tax_rate"],
       where: {
         supplier_code: supplier.code,
         is_settled: false,
         voucher_date: { lte: periodTo },
       },
       _sum: { subtotal_amount: true, tax_amount: true },
-      _count: true,
+      _count: { _all: true },
     });
 
     const paymentAgg = await client.payment_vouchers.aggregate({
@@ -100,8 +102,16 @@ async function computeItems(
     });
 
     const previousBalance = prevRecord ? Number(prevRecord.payable_amount) : Number(supplier.opening_balance ?? 0);
-    const purchaseAmount = Number(purchaseAgg._sum.subtotal_amount ?? 0);
-    const taxAmount = Number(purchaseAgg._sum.tax_amount ?? 0);
+    const purchaseAmount = purchaseByRate.reduce((a, g) => a + Number(g._sum.subtotal_amount ?? 0), 0);
+    const taxAmount = closingTaxAmount(
+      purchaseByRate.map((g) => ({
+        rate: Number(g.tax_rate),
+        subtotal: Number(g._sum.subtotal_amount ?? 0),
+        voucherTax: Number(g._sum.tax_amount ?? 0),
+      })),
+      supplier.calc_method,
+      supplier.rounding_method,
+    );
     const paymentAmount = Number(paymentAgg._sum.subtotal_amount ?? 0);
     const payableAmount = previousBalance + purchaseAmount + taxAmount - paymentAmount;
 
@@ -120,7 +130,7 @@ async function computeItems(
       tax_amount: taxAmount,
       payment_amount: paymentAmount,
       payable_amount: payableAmount,
-      voucher_count: purchaseAgg._count,
+      voucher_count: purchaseByRate.reduce((a, g) => a + g._count._all, 0),
     });
   }
 
