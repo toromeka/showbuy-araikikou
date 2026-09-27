@@ -10,6 +10,8 @@ import {
   type PurchaseVoucherInput,
 } from "@/lib/actions/purchase-vouchers";
 import { SearchDialog, openOnF8 } from "@/components/SearchDialog";
+import { ProductCodeInput } from "@/components/ProductCodeInput";
+import { HANDWRITE_PRODUCT_CODE } from "@/lib/product-codes";
 
 type SupplierOption = { code: string; name1: string; staff_code: string | null; rounding_method: number | null };
 type StaffOption = { code: string; name: string };
@@ -208,9 +210,10 @@ export function PurchaseVoucherForm({
       <section className="rounded-lg border border-slate-200 bg-white p-6">
         <h2 className="mb-4 text-sm font-bold text-slate-600">明細</h2>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full min-w-[1020px] text-sm">
             <thead className="text-left text-xs text-slate-500">
               <tr>
+                <th className="w-32 pb-2">商品コード</th>
                 <th className="w-56 pb-2">商品名（入力で候補検索）</th>
                 <th className="w-32 pb-2">規格</th>
                 <th className="w-16 pb-2">単位</th>
@@ -308,9 +311,10 @@ function LineRow({
 
   function handleQueryChange(v: string) {
     setQuery(v);
-    onChange(line.key, { product_name: v, product_code: "" });
+    // 商品コードが入っている行（手打ち用コード「1」を含む）は品名を書き換えるだけで、候補検索はしない
+    onChange(line.key, { product_name: v });
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (v.trim().length === 0) {
+    if (line.product_code || v.trim().length === 0) {
       setResults([]);
       setOpen(false);
       return;
@@ -323,6 +327,12 @@ function LineRow({
   }
 
   function selectProduct(p: PurchaseProductSearchResult) {
+    if (p.code === HANDWRITE_PRODUCT_CODE) {
+      // 手打ち用コードはマスタの仮の名前（手打ち商品）を使わず、品名は利用者が入力する
+      onChange(line.key, { product_code: p.code });
+      setOpen(false);
+      return;
+    }
     onChange(line.key, {
       product_code: p.code,
       product_name: p.name,
@@ -340,6 +350,14 @@ function LineRow({
 
   return (
     <tr className="border-t border-slate-100 align-top">
+      <td className="py-1 pr-2">
+        <ProductCodeInput
+          code={line.product_code}
+          onCodeChange={(c) => onChange(line.key, { product_code: c })}
+          onResolved={selectProduct}
+          priceColumn="cost"
+        />
+      </td>
       <td className="relative py-1 pr-2">
         <input
           value={query}
@@ -347,7 +365,9 @@ function LineRow({
           onFocus={() => results.length > 0 && setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           onKeyDown={openOnF8(() => setDialogOpen(true))}
-          placeholder="商品名 or コードで検索（F8で検索ダイアログ）"
+          placeholder={
+            line.product_code === HANDWRITE_PRODUCT_CODE ? "品名を入力" : "商品名 or コードで検索（F8で検索ダイアログ）"
+          }
           className="input"
         />
         {open && (

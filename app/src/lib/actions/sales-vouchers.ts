@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { checkProductCodes } from "@/lib/product-validation";
 import { roundByMethod } from "@/lib/tax";
 import { withVoucherNoRetry } from "@/lib/voucher-number";
 
@@ -83,6 +84,8 @@ async function validateInput(input: SalesVoucherInput): Promise<string | null> {
   if (validLines.length === 0) return "明細を1行以上入力してください（商品名と数量が必要です）。";
   const customer = await prisma.customers.findUnique({ where: { code: input.customer_code } });
   if (!customer) return "指定された得意先が見つかりません。";
+  const productError = await checkProductCodes(input.lines);
+  if (productError) return productError;
   return null;
 }
 
@@ -249,4 +252,24 @@ export async function searchProducts(query: string): Promise<ProductSearchResult
     sale_price_1: p.sale_price_1 != null ? p.sale_price_1.toString() : null,
     standard_cost: p.standard_cost != null ? p.standard_cost.toString() : null,
   }));
+}
+
+// 明細の商品コード欄に直接入力されたコードから商品を引く（有効な商品のみ・完全一致）。
+// 売上・仕入・見積の各伝票の明細入力で共通に使う。
+export async function findProductByCode(code: string): Promise<ProductSearchResult | null> {
+  const c = code.trim();
+  if (c.length === 0) return null;
+  const p = await prisma.products.findFirst({
+    where: { code: c, is_active: true },
+    select: { code: true, name: true, spec: true, unit_code: true, sale_price_1: true, standard_cost: true },
+  });
+  if (!p) return null;
+  return {
+    code: p.code,
+    name: p.name,
+    spec: p.spec,
+    unit_code: p.unit_code,
+    sale_price_1: p.sale_price_1 != null ? p.sale_price_1.toString() : null,
+    standard_cost: p.standard_cost != null ? p.standard_cost.toString() : null,
+  };
 }
