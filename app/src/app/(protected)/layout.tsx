@@ -21,9 +21,14 @@ const NAV_ITEMS = [
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   // ログイン時の情報ではなくDBの最新の状態を見る（無効化・権限変更をすぐ反映するため）
   const user = await getCurrentUser();
-  // ユーザー管理・データ移行（旧システムの伝票の取り込み）は管理者だけに表示する
+  // 自社情報・ユーザー管理・データ移行（旧システムの伝票の取り込み）は管理者だけに表示する
   const navItems = isAdmin(user)
-    ? [...NAV_ITEMS, { href: "/users", label: "ユーザー管理" }, { href: "/data-migration", label: "データ移行" }]
+    ? [
+        ...NAV_ITEMS,
+        { href: "/company-settings", label: "自社情報" },
+        { href: "/users", label: "ユーザー管理" },
+        { href: "/data-migration", label: "データ移行" },
+      ]
     : NAV_ITEMS;
 
   return (
