@@ -1,5 +1,7 @@
 import Link from "next/link";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/current-user";
 
 // next.config.ts でビルド時に埋め込んだコミット番号・日時。最新版かどうかの確認用。
 function versionLabel(): string {
@@ -18,6 +20,14 @@ function versionLabel(): string {
   if (!commit) return `バージョン 不明（ビルド ${fmt(process.env.APP_BUILT_AT)}）`;
   const date = process.env.APP_COMMIT_DATE || process.env.APP_BUILT_AT;
   return `バージョン ${commit}（${fmt(date)} 更新）`;
+}
+
+// 初期設定のパスワード（prisma/seed.ts）のまま使っていないかを確認する
+async function usesInitialPassword(): Promise<boolean> {
+  const me = await getCurrentUser();
+  if (!me) return false;
+  const user = await prisma.users.findUnique({ where: { id: me.id }, select: { password_hash: true } });
+  return !!user && (await bcrypt.compare("changeme123", user.password_hash));
 }
 
 export default async function DashboardPage() {
@@ -66,6 +76,15 @@ export default async function DashboardPage() {
 
   return (
     <div>
+      {(await usesInitialPassword()) && (
+        <p className="mb-6 rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          パスワードが初期設定のままです。第三者にログインされるおそれがあるため、
+          <Link href="/account/password" className="font-semibold underline">
+            パスワード変更
+          </Link>
+          から変更してください。
+        </p>
+      )}
       <div className="mb-6 flex flex-wrap items-baseline gap-x-4 gap-y-1">
         <h1 className="text-lg font-bold text-slate-800">ホーム</h1>
         <p className="text-xs text-slate-500">{versionLabel()}</p>

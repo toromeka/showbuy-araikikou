@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
+import { getCurrentUser, isAdmin } from "@/lib/current-user";
 import { decodeCsvBuffer } from "@/lib/csv";
 import {
   executeMigration,
@@ -29,10 +29,10 @@ async function readFiles(formData: FormData): Promise<MigrationFiles | string> {
 }
 
 async function requireAdmin(): Promise<{ userId: string | null } | string> {
-  const session = await auth();
-  if (!session?.user) return "ログインが必要です。";
-  if (session.user.role !== "admin") return "データ移行は管理者のみ実行できます。";
-  return { userId: session.user.id ?? null };
+  const user = await getCurrentUser();
+  if (!user) return "ログインが必要です。";
+  if (!isAdmin(user)) return "データ移行は管理者のみ実行できます。";
+  return { userId: user.id };
 }
 
 export async function previewMigrationAction(formData: FormData): Promise<MigrationActionResult> {
