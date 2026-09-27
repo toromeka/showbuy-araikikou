@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { acquireClosingLock } from "@/lib/closing-lock";
+import { closingTaxAmount } from "@/lib/closing-tax";
 import type { Prisma } from "@/generated/prisma/client";
 
 type TxClient = Prisma.TransactionClient;
@@ -83,14 +84,15 @@ async function computeItems(
     const periodFrom = prevRecord ? addDays(prevRecord.period_to, 1) : null;
     const periodTo = asOfDate;
 
-    const salesAgg = await client.sales_vouchers.aggregate({
+    const salesByRate = await client.sales_vouchers.groupBy({
+      by: ["tax_rate"],
       where: {
         customer_code: { in: groupCodes },
         is_billed: false,
         voucher_date: { lte: periodTo },
       },
       _sum: { sales_amount: true, tax_amount: true },
-      _count: true,
+      _count: { _all: true },
     });
 
     const receiptAgg = await client.receipt_vouchers.aggregate({
@@ -105,8 +107,16 @@ async function computeItems(
     });
 
     const previousBalance = prevRecord ? Number(prevRecord.billed_amount) : Number(root.opening_balance ?? 0);
-    const salesAmount = Number(salesAgg._sum.sales_amount ?? 0);
-    const taxAmount = Number(salesAgg._sum.tax_amount ?? 0);
+    const salesAmount = salesByRate.reduce((a, g) => a + Number(g._sum.sales_amount ?? 0), 0);
+    const taxAmount = closingTaxAmount(
+      salesByRate.map((g) => ({
+        rate: Number(g.tax_rate),
+        subtotal: Number(g._sum.sales_amount ?? 0),
+        voucherTax: Number(g._sum.tax_amount ?? 0),
+      })),
+      root.calc_method,
+      root.rounding_method,
+    );
     const receiptAmount = Number(receiptAgg._sum.subtotal_amount ?? 0);
     const billedAmount = previousBalance + salesAmount + taxAmount - receiptAmount;
 
@@ -126,7 +136,7 @@ async function computeItems(
       tax_amount: taxAmount,
       receipt_amount: receiptAmount,
       billed_amount: billedAmount,
-      voucher_count: salesAgg._count,
+      voucher_count: salesByRate.reduce((a, g) => a + g._count._all, 0),
     });
   }
 

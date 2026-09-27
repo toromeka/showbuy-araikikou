@@ -19,6 +19,9 @@ const NAV_ITEMS = [
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
+  // データ移行（旧システムの伝票の取り込み）は管理者だけに表示する
+  const navItems =
+    session?.user?.role === "admin" ? [...NAV_ITEMS, { href: "/data-migration", label: "データ移行" }] : NAV_ITEMS;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -26,7 +29,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         <div className="flex items-center gap-8">
           <span className="text-base font-bold text-slate-800">荒井機工 販売管理システム</span>
           <nav className="flex flex-wrap gap-5">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
