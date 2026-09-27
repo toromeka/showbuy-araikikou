@@ -78,8 +78,8 @@ try {
   const salesVoucherId = salesVoucherUrl.match(/\/sales-vouchers\/(\d+)$/)?.[1];
   log("sales voucher created", true, salesVoucherUrl);
 
-  const deliveryNoteLink = page.locator('a:has-text("納品書PDF")');
-  log("納品書PDF link shown on detail page", (await deliveryNoteLink.count()) === 1);
+  const deliveryNoteLink = page.locator('a:has-text("プレビュー")[href$="/print"]');
+  log("納品書のプレビューボタンが詳細画面にある", (await deliveryNoteLink.count()) === 1);
   const shortPdf = await assertPdf(page, `${BASE_URL}/sales-vouchers/${salesVoucherId}/print`, "納品書PDF");
   const shortPageCount = await pdfPageCount(shortPdf);
   log("納品書PDF(2品番): 正・控1組で1枚に収まる", shortPageCount === 1, `pages=${shortPageCount}`);
@@ -129,7 +129,7 @@ try {
   const quotationId = quotationUrl.match(/\/quotations\/(\d+)$/)?.[1];
   log("quotation created", true, quotationUrl);
 
-  const quotationPdfLink = page.locator('a:has-text("見積書PDF")');
+  const quotationPdfLink = page.locator('a:has-text("プレビュー")[href$="/print"]');
   log("見積書PDF link shown on detail page", (await quotationPdfLink.count()) === 1);
   await assertPdf(page, `${BASE_URL}/quotations/${quotationId}/print`, "見積書PDF");
 
@@ -147,7 +147,7 @@ try {
   log("billing closing executed", true, closingUrl);
 
   const recordRow = page.locator("tbody tr", { hasText: CUSTOMER_CODE }).first();
-  const invoicePdfLink = recordRow.locator('a:has-text("請求書PDF")');
+  const invoicePdfLink = recordRow.locator('a:has-text("プレビュー")[href$="/print"]');
   log("請求書PDF link shown on closing detail page", (await invoicePdfLink.count()) === 1);
   const invoiceHref = await invoicePdfLink.getAttribute("href");
   log("請求書PDF link points to this closing's record", !!invoiceHref && invoiceHref.includes(`/billing-closings/${closingId}/records/`));

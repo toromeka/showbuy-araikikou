@@ -629,10 +629,45 @@ model users {
   quotations        quotations[]
   receipt_vouchers  receipt_vouchers[]
   sales_vouchers    sales_vouchers[]
+  print_jobs        print_jobs[]
   staff             staff?              @relation(fields: [staff_code], references: [code], onDelete: NoAction, onUpdate: NoAction, map: "fk_users_staff")
 }
 
 model voucher_sequences {
   voucher_type String @id @db.VarChar(20)
   last_number  BigInt @default(0)
+}
+
+model print_trays {
+  doc_type String @id @db.VarChar(20)
+  cassette Int    @db.SmallInt
+}
+
+model print_agents {
+  id           Int          @id @default(autoincrement())
+  name         String       @db.VarChar(60)
+  key_hash     String       @unique @db.VarChar(64)
+  is_active    Boolean      @default(true)
+  last_seen_at DateTime?    @db.Timestamptz(6)
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  print_jobs   print_jobs[]
+}
+
+model print_jobs {
+  id           BigInt        @id @default(autoincrement())
+  doc_type     String        @db.VarChar(20)
+  target_id    String        @db.VarChar(30)
+  title        String        @db.VarChar(100)
+  cassette     Int           @db.SmallInt
+  status       String        @default("pending") @db.VarChar(10)
+  error        String?
+  requested_by String?       @db.Uuid
+  agent_id     Int?
+  created_at   DateTime      @default(now()) @db.Timestamptz(6)
+  picked_at    DateTime?     @db.Timestamptz(6)
+  finished_at  DateTime?     @db.Timestamptz(6)
+  users        users?        @relation(fields: [requested_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  print_agents print_agents? @relation(fields: [agent_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([status, id], map: "idx_print_jobs_status")
 }
