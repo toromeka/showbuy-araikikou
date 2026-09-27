@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { PrintButtons } from "@/components/PrintButtons";
 import { DeleteButton } from "./DeleteButton";
 
 export default async function QuotationDetailPage({
@@ -32,7 +33,7 @@ export default async function QuotationDetailPage({
             </span>
           )}
         </h1>
-        <div className="flex gap-2">
+        <div className="flex items-start gap-2">
           <Link
             href={`/quotations/${id}/edit`}
             className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
@@ -40,14 +41,7 @@ export default async function QuotationDetailPage({
             編集
           </Link>
           <DeleteButton id={id} />
-          <a
-            href={`/quotations/${id}/print`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-          >
-            見積書PDF
-          </a>
+          <PrintButtons docType="quotation" targetId={id} previewHref={`/quotations/${id}/print`} />
           <Link
             href="/quotations"
             className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"

@@ -230,3 +230,15 @@ ${opts.bodyHtml}
 </body>
 </html>`;
 }
+
+export type PrintedPdf = { pdf: Buffer; filename: string };
+
+// 画面の「プレビュー」で開くPDFの応答（ブラウザの中で表示する）
+export function pdfResponse(result: PrintedPdf): Response {
+  return new Response(new Uint8Array(result.pdf), {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="${result.filename}"`,
+    },
+  });
+}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { PrintButtons } from "@/components/PrintButtons";
 import { ReverseButton } from "./ReverseButton";
 
 function closingDayLabel(day: number): string {
@@ -104,14 +105,12 @@ export default async function BillingClosingDetailPage({
                   <td className="py-2 text-right">{Number(r.receipt_amount).toLocaleString()}</td>
                   <td className="py-2 text-right font-semibold">{Number(r.billed_amount).toLocaleString()}</td>
                   <td className="py-2 text-right">
-                    <a
-                      href={`/billing-closings/${id}/records/${r.id}/print`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      請求書PDF
-                    </a>
+                    <PrintButtons
+                      docType="invoice"
+                      targetId={r.id.toString()}
+                      previewHref={`/billing-closings/${id}/records/${r.id}/print`}
+                      compact
+                    />
                   </td>
                 </tr>
               ))}

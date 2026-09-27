@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { PrintButtons } from "@/components/PrintButtons";
 import { DeleteButton } from "./DeleteButton";
 
 export default async function SalesVoucherDetailPage({
@@ -37,7 +38,7 @@ export default async function SalesVoucherDetailPage({
             </span>
           )}
         </h1>
-        <div className="flex gap-2">
+        <div className="flex items-start gap-2">
           {!voucher.is_billed && (
             <>
               <Link
@@ -49,14 +50,7 @@ export default async function SalesVoucherDetailPage({
               <DeleteButton id={id} />
             </>
           )}
-          <a
-            href={`/sales-vouchers/${id}/print`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-          >
-            納品書PDF
-          </a>
+          <PrintButtons docType="delivery_note" targetId={id} previewHref={`/sales-vouchers/${id}/print`} />
           <Link
             href="/sales-vouchers"
             className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
