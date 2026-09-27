@@ -65,6 +65,23 @@ export function ImportForm({
             <dt className="text-slate-500">失敗（スキップ）</dt>
             <dd className="text-red-700">{state.failed}</dd>
           </dl>
+          {!!state.paddedCodes && (
+            <p className="mt-3 text-xs text-slate-600">
+              コードの先頭の0が無かった{state.paddedCodes}行は、先頭に0を補って4桁のコードとして取り込みました（例: 6 → 0006）。
+            </p>
+          )}
+          {!!state.removedDuplicates && (
+            <p className="mt-3 text-xs text-slate-600">
+              以前の取り込みで先頭の0が無いコードのまま別に登録されていた{state.removedDuplicates}
+              件は、伝票などが紐づいていなかったため削除しました。
+            </p>
+          )}
+          {state.keptDuplicates && state.keptDuplicates.length > 0 && (
+            <p className="mt-3 text-xs text-amber-700">
+              先頭の0が無いコードのまま登録されている次のコードは、伝票などが紐づいているため削除できませんでした。
+              4桁のコードの側と重複していないか確認してください: {state.keptDuplicates.join("、")}
+            </p>
+          )}
           {!!state.nulledRefs && (
             <p className="mt-3 text-xs text-amber-700">
               担当者・分類などのコードがマスタに見つからず、{state.nulledRefs}
