@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/purchase-vouchers", label: "仕入伝票" },
   { href: "/receipt-vouchers", label: "入金伝票" },
   { href: "/payment-vouchers", label: "支払伝票" },
+  { href: "/daily-import", label: "日計伝票取込" },
   { href: "/quotations", label: "見積書" },
   { href: "/billing-closings", label: "請求更新" },
   { href: "/payment-closings", label: "仕入支払更新" },

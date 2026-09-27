@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import { parseCsv } from "@/lib/csv";
 import { roundByMethod } from "@/lib/tax";
 import { lastClosingDateOnOrBefore, todayInJapan } from "@/lib/closing-date";
@@ -19,11 +20,11 @@ import { closingTaxAmount } from "@/lib/closing-tax";
 // 支払更新済みにする（支払伝票のデータが無いため、過去の仕入支払更新は再現しない）。
 // ---------------------------------------------------------------------------
 
-type Row = Record<string, string>;
+export type Row = Record<string, string>;
 
 export type MigrationFiles = { sales: string; purchase: string | null; receipt: string | null };
 
-type LineInput = {
+export type LineInput = {
   category: string | null;
   product_code: string | null;
   product_name: string;
@@ -35,7 +36,7 @@ type LineInput = {
   note: string | null;
 };
 
-type VoucherPlan = {
+export type VoucherPlan = {
   voucher_no: string;
   partner_code: string;
   voucher_date: string; // YYYY-MM-DD
@@ -121,7 +122,7 @@ type Plan = {
 // 共通の小さな関数
 // ---------------------------------------------------------------------------
 const len = (s: string) => [...s].length;
-const trimOrNull = (s: string | undefined) => {
+export const trimOrNull = (s: string | undefined) => {
   const t = (s ?? "").replace(/[\s　]+$/g, "").replace(/^[\s　]+/g, "");
   return t === "" ? null : t;
 };
@@ -139,8 +140,8 @@ function toIsoDate(s: string | undefined): string | null {
   return Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== iso ? null : iso;
 }
 // 旧システムのCSVはExcelを経由すると先頭の0が落ちることがあるため、数字だけのコードは桁をそろえる
-const padNumeric = (code: string, width: number) => (/^\d+$/.test(code) ? code.padStart(width, "0") : code);
-const toDate = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
+export const padNumeric = (code: string, width: number) => (/^\d+$/.test(code) ? code.padStart(width, "0") : code);
+export const toDate = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 const addDays = (iso: string, days: number) => {
   const d = toDate(iso);
   d.setUTCDate(d.getUTCDate() + days);
@@ -160,7 +161,7 @@ function nextClosingOnOrAfter(cd: number, iso: string): string {
   return m === 12 ? closingDateOf(cd, y + 1, 1) : closingDateOf(cd, y, m + 1);
 }
 
-class Problems {
+export class Problems {
   errors: string[] = [];
   warnings: string[] = [];
   private errorCount = 0;
@@ -178,11 +179,23 @@ class Problems {
 // ---------------------------------------------------------------------------
 // 売上・仕入（明細単位のCSV）を伝票ごとにまとめる
 // ---------------------------------------------------------------------------
-function groupVoucherRows(
+export type VoucherGroup = {
+  voucher_no: string;
+  partner_code: string;
+  partner_name: string;
+  date: string;
+  staff: string | null;
+  remarks: string | null;
+  lines: (LineInput & { rowNo: number; rawAmount: boolean })[];
+};
+
+export function groupVoucherRows(
   kind: "売上" | "仕入",
   rows: Row[],
   problems: Problems,
-): { voucher_no: string; partner_code: string; partner_name: string; date: string; staff: string | null; remarks: string | null; lines: (LineInput & { rowNo: number; rawAmount: boolean })[] }[] {
+  // 行番号の表示に使う、各行のCSVでの行番号（省略時は並び順から数える）
+  rowNos?: number[],
+): VoucherGroup[] {
   const required = ["伝票日付", "伝票番号", "区分", "得意先/仕入先コード", "商品名", "数量", "単価", "金額"];
   if (rows.length > 0) {
     const missing = required.filter((h) => !(h in rows[0]));
@@ -192,9 +205,9 @@ function groupVoucherRows(
     }
   }
 
-  const map = new Map<string, ReturnType<typeof groupVoucherRows>[number]>();
+  const map = new Map<string, VoucherGroup>();
   for (const [i, r] of rows.entries()) {
-    const rowNo = i + 2;
+    const rowNo = rowNos?.[i] ?? i + 2;
     const where = `${kind}伝票 ${rowNo}行目`;
     const noRaw = trimOrNull(r["伝票番号"]);
     const date = toIsoDate(r["伝票日付"]);
@@ -302,10 +315,7 @@ export async function planMigration(files: MigrationFiles): Promise<Plan> {
   const supplierMap = new Map(suppliers.map((s) => [s.code, s]));
   const productCodes = new Set(productRows.map((p) => p.code));
   const staffCodes = new Set(staffRows.map((s) => s.code));
-  const taxRateOn = (iso: string) => {
-    const row = taxRates.find((t) => t.starts_on.toISOString().slice(0, 10) <= iso);
-    return row ? Number(row.rate) : 10;
-  };
+  const taxRateOn = taxRateLookup(taxRates);
   const today = todayInJapan();
 
   // --- マスタに無いコード（旧マスタとして無効状態で自動登録する） ---
@@ -343,49 +353,21 @@ export async function planMigration(files: MigrationFiles): Promise<Plan> {
   }
 
   // --- 売上伝票（明細ごとに消費税を計算。画面から入力したときと同じ計算） ---
-  const sales: VoucherPlan[] = salesGroups.map((g) => {
-    const rounding = customerMap.get(g.partner_code)?.rounding_method ?? 0;
-    const rate = taxRateOn(g.date);
-    const lineTaxes = g.lines.map((l) => roundByMethod(l.amount * (rate / 100), rounding));
-    return {
-      voucher_no: g.voucher_no,
-      partner_code: g.partner_code,
-      voucher_date: g.date,
-      staff_code: g.staff && staffCodes.has(g.staff) ? g.staff : null,
-      remarks: g.remarks,
-      tax_rate: rate,
-      lines: g.lines,
-      subtotal: g.lines.reduce((a, l) => a + l.amount, 0),
-      tax: lineTaxes.reduce((a, t) => a + t, 0),
-      line_taxes: lineTaxes,
-      closed: false,
-    };
-  });
+  const sales: VoucherPlan[] = salesGroups.map((g) =>
+    salesVoucherPlan(g, customerMap.get(g.partner_code)?.rounding_method ?? 0, taxRateOn(g.date), staffCodes),
+  );
 
   // --- 仕入伝票（伝票単位で消費税を計算。画面から入力したときと同じ計算） ---
   const purchases: VoucherPlan[] = purchaseGroups.map((g) => {
     const supplier = supplierMap.get(g.partner_code);
     const rate = taxRateOn(g.date);
-    const subtotal = g.lines.reduce((a, l) => a + l.amount, 0);
     const lastClosing = lastClosingDateOnOrBefore(supplier?.closing_day ?? defaultClosingDay, today);
     // 金額が空の明細がある伝票は、後から画面で直せるよう未払のまま取り込む
     const hasBlankAmount = g.lines.some((l) => l.category === null && !l.rawAmount);
     if (hasBlankAmount && g.date <= lastClosing) {
       problems.warnings.push(`仕入伝票${g.voucher_no}（${g.date}）は金額が空の明細があるため、画面で直せるよう未払のまま取り込みます。`);
     }
-    return {
-      voucher_no: g.voucher_no,
-      partner_code: g.partner_code,
-      voucher_date: g.date,
-      staff_code: g.staff && staffCodes.has(g.staff) ? g.staff : null,
-      remarks: g.remarks,
-      tax_rate: rate,
-      lines: g.lines,
-      subtotal,
-      tax: roundByMethod(subtotal * (rate / 100), supplier?.rounding_method ?? 0),
-      line_taxes: [],
-      closed: g.date <= lastClosing && !hasBlankAmount,
-    };
+    return purchaseVoucherPlan(g, supplier?.rounding_method ?? 0, rate, staffCodes, g.date <= lastClosing && !hasBlankAmount);
   });
 
   // --- 入金伝票（金額を、区分そのものの金額・振込手数料・相殺の明細に分ける） ---
@@ -655,97 +637,11 @@ export async function executeMigration(files: MigrationFiles, userId: string | n
       await acquireClosingLock(tx, "billing_closing");
 
       // 1. 旧マスタ（無効状態）の自動登録
-      if (plan.newCustomers.length > 0) {
-        await tx.customers.createMany({ data: plan.newCustomers.map((c) => ({ code: c.code, name1: c.name, is_active: false })) });
-      }
-      if (plan.newSuppliers.length > 0) {
-        await tx.suppliers.createMany({ data: plan.newSuppliers.map((s) => ({ code: s.code, name1: s.name, is_active: false })) });
-      }
-      for (const part of chunk(plan.newProducts, 1000)) {
-        await tx.products.createMany({
-          data: part.map((p) => ({ code: p.code, name: p.name, spec: p.spec, is_active: p.active })),
-        });
-      }
+      await registerOldMasters(tx, plan.newCustomers, plan.newSuppliers, plan.newProducts);
 
-      // 2. 売上伝票
-      for (const part of chunk(plan.sales, 500)) {
-        const created = await tx.sales_vouchers.createManyAndReturn({
-          data: part.map((v) => ({
-            voucher_no: v.voucher_no,
-            customer_code: v.partner_code,
-            voucher_date: toDate(v.voucher_date),
-            tax_rate: v.tax_rate,
-            staff_code: v.staff_code,
-            remarks: v.remarks,
-            sales_amount: v.subtotal,
-            cost_amount: 0,
-            tax_amount: v.tax,
-            gross_profit: v.subtotal,
-            is_billed: v.closed,
-            created_by: userId,
-          })),
-          select: { id: true, voucher_no: true },
-        });
-        const idOf = new Map(created.map((c) => [c.voucher_no, c.id]));
-        await tx.sales_voucher_lines.createMany({
-          data: part.flatMap((v) =>
-            v.lines.map((l, i) => ({
-              voucher_id: idOf.get(v.voucher_no)!,
-              line_no: i + 1,
-              category: l.category,
-              product_code: l.product_code,
-              product_name: l.product_name,
-              spec: l.spec,
-              unit: l.unit,
-              quantity: l.quantity,
-              sale_price: l.price,
-              sale_amount: l.amount,
-              cost_amount: 0,
-              gross_profit: l.amount,
-              tax_amount: v.line_taxes[i],
-              note: l.note,
-            })),
-          ),
-        });
-      }
-
-      // 3. 仕入伝票
-      for (const part of chunk(plan.purchases, 500)) {
-        const created = await tx.purchase_vouchers.createManyAndReturn({
-          data: part.map((v) => ({
-            voucher_no: v.voucher_no,
-            supplier_code: v.partner_code,
-            voucher_date: toDate(v.voucher_date),
-            tax_rate: v.tax_rate,
-            staff_code: v.staff_code,
-            remarks: v.remarks,
-            subtotal_amount: v.subtotal,
-            tax_amount: v.tax,
-            total_amount: v.subtotal + v.tax,
-            is_settled: v.closed,
-            created_by: userId,
-          })),
-          select: { id: true, voucher_no: true },
-        });
-        const idOf = new Map(created.map((c) => [c.voucher_no, c.id]));
-        await tx.purchase_voucher_lines.createMany({
-          data: part.flatMap((v) =>
-            v.lines.map((l, i) => ({
-              voucher_id: idOf.get(v.voucher_no)!,
-              line_no: i + 1,
-              category: l.category,
-              product_code: l.product_code,
-              product_name: l.product_name,
-              spec: l.spec,
-              unit: l.unit,
-              quantity: l.quantity,
-              cost_price: l.price,
-              cost_amount: l.amount,
-              note: l.note,
-            })),
-          ),
-        });
-      }
+      // 2. 売上伝票・3. 仕入伝票
+      await insertSalesVouchers(tx, plan.sales, userId);
+      await insertPurchaseVouchers(tx, plan.purchases, userId);
 
       // 4. 入金伝票
       for (const part of chunk(plan.receipts, 500)) {
@@ -803,23 +699,184 @@ export async function executeMigration(files: MigrationFiles, userId: string | n
       }
 
       // 6. 伝票番号の採番カウンタを、取り込んだ番号の続きから採番されるようにする
-      const maxNo = (nos: string[]) => nos.reduce((m, n) => (/^\d+$/.test(n) && BigInt(n) > m ? BigInt(n) : m), BigInt(0));
-      for (const [type, nos] of [
-        ["sales", plan.sales.map((v) => v.voucher_no)],
-        ["purchase", plan.purchases.map((v) => v.voucher_no)],
-        ["receipt", plan.receipts.map((v) => v.voucher_no)],
-      ] as const) {
-        const max = maxNo([...nos]);
-        if (max === BigInt(0)) continue;
-        const current = await tx.voucher_sequences.findUnique({ where: { voucher_type: type } });
-        if (!current) await tx.voucher_sequences.create({ data: { voucher_type: type, last_number: max } });
-        else if (current.last_number < max) {
-          await tx.voucher_sequences.update({ where: { voucher_type: type }, data: { last_number: max } });
-        }
-      }
+      await advanceVoucherSequence(tx, "sales", plan.sales.map((v) => v.voucher_no));
+      await advanceVoucherSequence(tx, "purchase", plan.purchases.map((v) => v.voucher_no));
+      await advanceVoucherSequence(tx, "receipt", plan.receipts.map((v) => v.voucher_no));
     },
     { timeout: 10 * 60 * 1000, maxWait: 30 * 1000 },
   );
 
   return plan.preview;
+}
+
+// ---------------------------------------------------------------------------
+// 日計伝票のCSV取り込み（src/lib/migration/daily-import.ts）と共通で使う部品
+// ---------------------------------------------------------------------------
+type TxClient = Prisma.TransactionClient;
+const chunkOf = <T>(arr: T[], n: number) => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n));
+
+// 伝票日付の消費税率（税率の履歴から。無ければ10%）
+export function taxRateLookup(taxRates: { starts_on: Date; rate: Prisma.Decimal | number }[]) {
+  const sorted = [...taxRates].sort((a, b) => b.starts_on.getTime() - a.starts_on.getTime());
+  return (iso: string) => {
+    const row = sorted.find((t) => t.starts_on.toISOString().slice(0, 10) <= iso);
+    return row ? Number(row.rate) : 10;
+  };
+}
+
+// 売上伝票（明細ごとに消費税を計算。画面から入力したときと同じ計算）
+export function salesVoucherPlan(g: VoucherGroup, rounding: number, rate: number, staffCodes: Set<string>): VoucherPlan {
+  const lineTaxes = g.lines.map((l) => roundByMethod(l.amount * (rate / 100), rounding));
+  return {
+    voucher_no: g.voucher_no,
+    partner_code: g.partner_code,
+    voucher_date: g.date,
+    staff_code: g.staff && staffCodes.has(g.staff) ? g.staff : null,
+    remarks: g.remarks,
+    tax_rate: rate,
+    lines: g.lines,
+    subtotal: g.lines.reduce((a, l) => a + l.amount, 0),
+    tax: lineTaxes.reduce((a, t) => a + t, 0),
+    line_taxes: lineTaxes,
+    closed: false,
+  };
+}
+
+// 仕入伝票（伝票単位で消費税を計算。画面から入力したときと同じ計算）
+export function purchaseVoucherPlan(
+  g: VoucherGroup,
+  rounding: number,
+  rate: number,
+  staffCodes: Set<string>,
+  closed: boolean,
+): VoucherPlan {
+  const subtotal = g.lines.reduce((a, l) => a + l.amount, 0);
+  return {
+    voucher_no: g.voucher_no,
+    partner_code: g.partner_code,
+    voucher_date: g.date,
+    staff_code: g.staff && staffCodes.has(g.staff) ? g.staff : null,
+    remarks: g.remarks,
+    tax_rate: rate,
+    lines: g.lines,
+    subtotal,
+    tax: roundByMethod(subtotal * (rate / 100), rounding),
+    line_taxes: [],
+    closed,
+  };
+}
+
+// マスタに無い得意先・仕入先・商品を、伝票に書かれた名前で旧マスタ（無効）として登録する
+export async function registerOldMasters(
+  tx: TxClient,
+  customers: { code: string; name: string }[],
+  suppliers: { code: string; name: string }[],
+  products: { code: string; name: string; spec: string | null; active: boolean }[],
+): Promise<void> {
+  if (customers.length > 0) {
+    await tx.customers.createMany({ data: customers.map((c) => ({ code: c.code, name1: c.name, is_active: false })) });
+  }
+  if (suppliers.length > 0) {
+    await tx.suppliers.createMany({ data: suppliers.map((s) => ({ code: s.code, name1: s.name, is_active: false })) });
+  }
+  for (const part of chunkOf(products, 1000)) {
+    await tx.products.createMany({ data: part.map((p) => ({ code: p.code, name: p.name, spec: p.spec, is_active: p.active })) });
+  }
+}
+
+export async function insertSalesVouchers(tx: TxClient, plans: VoucherPlan[], userId: string | null): Promise<void> {
+  for (const part of chunkOf(plans, 500)) {
+    const created = await tx.sales_vouchers.createManyAndReturn({
+      data: part.map((v) => ({
+        voucher_no: v.voucher_no,
+        customer_code: v.partner_code,
+        voucher_date: toDate(v.voucher_date),
+        tax_rate: v.tax_rate,
+        staff_code: v.staff_code,
+        remarks: v.remarks,
+        sales_amount: v.subtotal,
+        cost_amount: 0,
+        tax_amount: v.tax,
+        gross_profit: v.subtotal,
+        is_billed: v.closed,
+        created_by: userId,
+      })),
+      select: { id: true, voucher_no: true },
+    });
+    const idOf = new Map(created.map((c) => [c.voucher_no, c.id]));
+    await tx.sales_voucher_lines.createMany({
+      data: part.flatMap((v) =>
+        v.lines.map((l, i) => ({
+          voucher_id: idOf.get(v.voucher_no)!,
+          line_no: i + 1,
+          category: l.category,
+          product_code: l.product_code,
+          product_name: l.product_name,
+          spec: l.spec,
+          unit: l.unit,
+          quantity: l.quantity,
+          sale_price: l.price,
+          sale_amount: l.amount,
+          cost_amount: 0,
+          gross_profit: l.amount,
+          tax_amount: v.line_taxes[i],
+          note: l.note,
+        })),
+      ),
+    });
+  }
+}
+
+export async function insertPurchaseVouchers(tx: TxClient, plans: VoucherPlan[], userId: string | null): Promise<void> {
+  for (const part of chunkOf(plans, 500)) {
+    const created = await tx.purchase_vouchers.createManyAndReturn({
+      data: part.map((v) => ({
+        voucher_no: v.voucher_no,
+        supplier_code: v.partner_code,
+        voucher_date: toDate(v.voucher_date),
+        tax_rate: v.tax_rate,
+        staff_code: v.staff_code,
+        remarks: v.remarks,
+        subtotal_amount: v.subtotal,
+        tax_amount: v.tax,
+        total_amount: v.subtotal + v.tax,
+        is_settled: v.closed,
+        created_by: userId,
+      })),
+      select: { id: true, voucher_no: true },
+    });
+    const idOf = new Map(created.map((c) => [c.voucher_no, c.id]));
+    await tx.purchase_voucher_lines.createMany({
+      data: part.flatMap((v) =>
+        v.lines.map((l, i) => ({
+          voucher_id: idOf.get(v.voucher_no)!,
+          line_no: i + 1,
+          category: l.category,
+          product_code: l.product_code,
+          product_name: l.product_name,
+          spec: l.spec,
+          unit: l.unit,
+          quantity: l.quantity,
+          cost_price: l.price,
+          cost_amount: l.amount,
+          note: l.note,
+        })),
+      ),
+    });
+  }
+}
+
+// 伝票番号の採番カウンタを、取り込んだ番号の続きから採番されるようにする（今より小さくはしない）
+export async function advanceVoucherSequence(
+  tx: TxClient,
+  type: "sales" | "purchase" | "receipt",
+  voucherNos: string[],
+): Promise<void> {
+  const max = voucherNos.reduce((m, n) => (/^\d+$/.test(n) && BigInt(n) > m ? BigInt(n) : m), BigInt(0));
+  if (max === BigInt(0)) return;
+  const current = await tx.voucher_sequences.findUnique({ where: { voucher_type: type } });
+  if (!current) await tx.voucher_sequences.create({ data: { voucher_type: type, last_number: max } });
+  else if (current.last_number < max) {
+    await tx.voucher_sequences.update({ where: { voucher_type: type }, data: { last_number: max } });
+  }
 }
