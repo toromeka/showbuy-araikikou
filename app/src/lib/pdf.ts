@@ -50,6 +50,55 @@ export function dateStr(d: Date | null | undefined): string {
   return d ? d.toISOString().slice(0, 10) : "";
 }
 
+// 2026/09/25 の形（納品書）
+export function slashDate(d: Date | null | undefined): string {
+  return d ? d.toISOString().slice(0, 10).replace(/-/g, "/") : "";
+}
+
+// 2026年 9月 25日 の形（見積書）
+export function jpDate(d: Date | null | undefined): string {
+  if (!d) return "";
+  const [y, m, day] = d.toISOString().slice(0, 10).split("-").map(Number);
+  return `${y}年 ${m}月 ${day}日`;
+}
+
+// 数量は小数点以下の不要な0を付けない（1.000 → 1、2.500 → 2.5）
+export function qtyStr(n: { toString(): string } | number | null | undefined): string {
+  if (n === null || n === undefined) return "";
+  return Number(n).toLocaleString("ja-JP", { maximumFractionDigits: 3 });
+}
+
+// 単価は小数点以下2桁まで表示する（4,870.00）
+export function unitPriceStr(n: { toString(): string } | number | null | undefined): string {
+  if (n === null || n === undefined) return "";
+  return Number(n).toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+const LEGAL_FORMS = ["有限会社", "株式会社", "合同会社", "合資会社", "合名会社"];
+
+// 納品書・見積書の右側に印刷する自社の表記（見本の伝票に合わせて、「有限会社」を小さく、
+// 社名を大きく字間を空けて印刷し、その下に〒・住所、TEL、FAXを右寄せで並べる）。
+// 表記は自社情報の画面で登録した文字をそのまま使う（例: TEL「(076)257-0811(代)」）。
+export function slipCompanyHtml(company: CompanySettings | null): string {
+  if (!company) return "";
+  const name = company.company_name.trim();
+  const form = LEGAL_FORMS.find((f) => name.startsWith(f));
+  const body = form ? name.slice(form.length).trim() : name;
+  const addr = [company.address1, company.address2].filter(Boolean).join(" ");
+  return `
+    <div class="sc-name">${form ? `<span class="sc-form">${escapeHtml(form)}</span>` : ""}<span class="sc-body">${escapeHtml(body)}</span></div>
+    ${company.postal_code || addr ? `<div class="sc-addr">${company.postal_code ? `〒${escapeHtml(company.postal_code)} ` : ""}${escapeHtml(addr)}</div>` : ""}
+    ${company.phone ? `<div>TEL ${escapeHtml(company.phone)}</div>` : ""}
+    ${company.fax ? `<div>FAX ${escapeHtml(company.fax)}</div>` : ""}`;
+}
+
+export const SLIP_COMPANY_STYLE = `
+  .sc-name { white-space: nowrap; margin-bottom: 1.2mm; }
+  .sc-form { font-size: 9px; letter-spacing: 0.35em; margin-right: 1.5mm; }
+  .sc-body { font-size: 15px; font-weight: 700; letter-spacing: 0.9em; margin-right: -0.9em; }
+  .sc-addr { font-size: 10.5px; letter-spacing: 0.08em; white-space: nowrap; }
+`;
+
 export function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
