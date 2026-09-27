@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ProductPicker } from "./ProductPicker";
+import { HANDWRITE_PRODUCT_CODE } from "@/lib/product-codes";
 
 function toDateOnly(d: string): Date {
   return new Date(`${d}T00:00:00.000Z`);
@@ -41,6 +42,22 @@ export default async function InventoryLedgerPage({
 
   const product = await prisma.products.findUnique({ where: { code: productCode } });
   if (!product) notFound();
+
+  if (product.code === HANDWRITE_PRODUCT_CODE) {
+    // 手打ち用コードの明細は、伝票ごとに品名が違う別々の品物のため、在庫の受払として集計しても意味がない
+    return (
+      <div>
+        <h1 className="mb-6 text-lg font-bold text-slate-800">商品受払台帳</h1>
+        <p className="mb-4 rounded bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          商品コード「{HANDWRITE_PRODUCT_CODE}」（{product.name}）は、マスタに無い品物を伝票に手入力するための手打ち用コードです。
+          伝票ごとに別々の品物が入っているため、受払台帳の対象外です。
+        </p>
+        <Link href="/inventory-ledger" className="text-sm text-blue-600 hover:underline">
+          ← 別の商品を選ぶ
+        </Link>
+      </div>
+    );
+  }
 
   const fromDate = from ? toDateOnly(from) : null;
   const toDate = to ? toDateOnly(to) : null;

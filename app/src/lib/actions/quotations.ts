@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { checkProductCodes } from "@/lib/product-validation";
 import { withVoucherNoRetry } from "@/lib/voucher-number";
 
 export type QuotationLineInput = {
@@ -94,6 +95,8 @@ async function validateInput(input: QuotationInput): Promise<string | null> {
   if (namedLines.length === 0) return "明細を1行以上入力してください（品名が必要です）。";
   const customer = await prisma.customers.findUnique({ where: { code: input.customer_code } });
   if (!customer) return "指定された得意先が見つかりません。";
+  const productError = await checkProductCodes(input.lines);
+  if (productError) return productError;
   return null;
 }
 
