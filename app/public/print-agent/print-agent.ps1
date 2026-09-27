@@ -87,14 +87,23 @@ function Get-PaperSources([string]$PrinterName) {
   return @($ps.PaperSources | ForEach-Object { [pscustomobject]@{ Kind = $_.RawKind; Name = $_.SourceName } })
 }
 
-# 「カセット 3」「Cassette3」「カセット３」などの表記の違いを吸収して、カセット番号の給紙トレイを探す
+# 「カセット 3」「Cassette3」「カセット３」「トレイ3」などの表記の違いを吸収して、カセット番号の給紙トレイを探す
 function Find-CassetteSource($Sources, [int]$No) {
   foreach ($s in $Sources) {
     $n = $s.Name -replace '\s', ''
     foreach ($d in 0..9) { $n = $n.Replace([string][char](0xFF10 + $d), [string]$d) }
-    if ($n -match "^(カセット|Cassette|Drawer)$No$") { return $s.Name }
+    if ($n -match "^(カセット|Cassette|Drawer|Tray|トレイ|引き出し|引出し|給紙段)$No$") { return $s.Name }
   }
   return $null
+}
+
+# 設定した給紙トレイがプリンターにあるか確認する（無いトレイを指定すると、プリンターが別のカセットから印刷してしまうため）。
+# トレイの一覧を取得できない環境では確認を省く
+function Assert-TrayExists($Config, [string]$Bin) {
+  try { $names = @(Get-PaperSources $Config.printerName | ForEach-Object { $_.Name }) } catch { return }
+  if ($names.Count -gt 0 -and -not ($names -contains $Bin)) {
+    throw ("給紙トレイ「{0}」がプリンター「{1}」にありません（プリンターの給紙トレイ: {2}）。-Setup でカセットの給紙トレイを選び直してください。" -f $Bin, $Config.printerName, ($names -join '、'))
+  }
 }
 
 function Find-Sumatra {
@@ -128,6 +137,7 @@ function Invoke-Job($Config, $Job) {
   try {
     $bin = $Config.cassettes."$($Job.cassette)"
     if (-not $bin) { throw "カセット$($Job.cassette) に対応する給紙トレイが設定されていません（-Setup で設定してください）。" }
+    Assert-TrayExists $Config $bin
     Invoke-WebRequest -UseBasicParsing -TimeoutSec 120 -OutFile $file `
       -Uri ($Config.serverUrl.TrimEnd('/') + "/api/print-agent/jobs/$($Job.id)/pdf") `
       -Headers @{ Authorization = 'Bearer ' + $Config.agentKey }
@@ -149,6 +159,8 @@ function Start-Agent {
   $offline = $false
   while ($true) {
     try {
+      # 設定をやり直したときに、起動し直さなくても新しい設定を使うよう、毎回読み直す
+      try { $config = Read-Config } catch { }
       $res = Invoke-Api $config 'POST' '/api/print-agent/next'
       if ($offline) { Write-Log 'システムに再接続しました'; $offline = $false }
       if ($res.job) {
@@ -213,19 +225,32 @@ function Invoke-Setup {
   for ($i = 0; $i -lt $printers.Count; $i++) { Write-Host ('  {0}. {1}' -f ($i + 1), $printers[$i]) }
   $defaultIndex = 1
   for ($i = 0; $i -lt $printers.Count; $i++) { if ($printers[$i] -match 'C3520') { $defaultIndex = $i + 1; break } }
+  if ($old) { for ($i = 0; $i -lt $printers.Count; $i++) { if ($printers[$i] -eq $old.printerName) { $defaultIndex = $i + 1; break } } }
   $n = [int](Read-Answer '使うプリンターの番号' "$defaultIndex")
   $config.printerName = $printers[$n - 1]
   Write-Host "  → プリンター: $($config.printerName)"
 
   # 4. カセットと給紙トレイの対応
-  $sources = Get-PaperSources $config.printerName
+  $sources = @(Get-PaperSources $config.printerName)
   Write-Host ''
-  Write-Host '  このプリンターの給紙トレイ:'
-  foreach ($s in $sources) { Write-Host ('    {0}' -f $s.Name) }
+  Write-Host '  このプリンターの給紙トレイ（プリンタードライバーでの名前）:'
+  for ($i = 0; $i -lt $sources.Count; $i++) { Write-Host ('    {0}. {1}' -f ($i + 1), $sources[$i].Name) }
+  Write-Host ''
+  Write-Host '  プリンター本体のカセット1〜4に当たる給紙トレイを、上の一覧の番号で選んでください。'
+  Write-Host '  （用紙の説明ではなく、上の一覧の名前から選びます。使わないカセットは 0）'
   $cassettes = [ordered]@{}
   foreach ($no in 1..4) {
     $guess = Find-CassetteSource $sources $no
-    $cassettes["$no"] = Read-Answer "カセット$no の給紙トレイの名前" $(if ($guess) { $guess } else { '' })
+    $default = '0'
+    for ($i = 0; $i -lt $sources.Count; $i++) { if ($sources[$i].Name -eq $guess) { $default = [string]($i + 1) } }
+    while ($true) {
+      $answer = Read-Answer "カセット$no の給紙トレイの番号" $default
+      $k = 0
+      if ([int]::TryParse($answer, [ref]$k) -and $k -ge 0 -and $k -le $sources.Count) { break }
+      Write-Host "    0〜$($sources.Count) の番号で入力してください。"
+    }
+    $cassettes["$no"] = if ($k -eq 0) { '' } else { $sources[$k - 1].Name }
+    Write-Host ('    → カセット{0}: {1}' -f $no, $(if ($k -eq 0) { '（使わない）' } else { $cassettes["$no"] }))
   }
   $config.cassettes = [pscustomobject]$cassettes
   Save-Config $config
@@ -241,6 +266,11 @@ function Invoke-Setup {
       -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1)
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings `
       -Description '荒井機工 販売管理システムの帳票を、プリンターの決まったカセットから印刷します。' -Force | Out-Null
+    # 既に動いている印刷係を止めてから起動し直す（新しいプログラムと設定で動かすため）
+    Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" -ErrorAction SilentlyContinue |
+      Where-Object { $_.CommandLine -like '*print-agent.ps1*' -and $_.CommandLine -notlike '*-Setup*' -and $_.ProcessId -ne $PID } |
+      ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
     Start-ScheduledTask -TaskName $TaskName
     Write-Host "  → サインイン時に自動で起動するよう登録し、起動しました（タスク名: $TaskName）"
   }
