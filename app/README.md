@@ -129,7 +129,7 @@ Next.js（App Router）+ TypeScript + Prisma + Auth.js（NextAuth v5, Credential
 - **帳票ごとのカセット**（`print_trays`）: 初期値は納品書=カセット3、見積書=カセット1、請求書=カセット2。管理者は「印刷状況」画面で変更できます
 - **印刷係の接続キー**（`print_agents`）: 管理者が「印刷状況」画面で発行します。キーはその場で1回だけ表示し、DBにはSHA-256のハッシュだけを保存します。パソコンを入れ替えたときは古いものを「無効にする」で止めます。1分以上接続が無い印刷係は「未接続」と表示します
 - **二重印刷の防止**: 依頼の取り出しは `FOR UPDATE SKIP LOCKED` で1件ずつ行い、同じ依頼を二重に印刷しません。印刷中のまま10分以上完了の報告が無い依頼はエラーにします（自動で再印刷はしません。プリンターを確認してから再度「印刷する」を押してください）
-- **印刷係のプログラム**: `public/print-agent/print-agent.ps1`（Windows標準のPowerShell 5.1で動作。「印刷状況」画面からダウンロードできます）。事務所のパソコンに SumatraPDF をインストールし、PowerShellを管理者として実行して `powershell -ExecutionPolicy Bypass -File .\print-agent.ps1 -Setup` を実行すると、接続キー・プリンター・カセットと給紙トレイの対応を順に設定し、サインイン時に自動で起動するよう登録します（タスク名 `AraiKikou-PrintAgent`）。`-ListTrays` でプリンターの給紙トレイの名前を一覧できます。動作の記録は同じフォルダの `print-agent.log` に残ります
+- **印刷係のプログラム**: `public/print-agent/print-agent.ps1`（Windows標準のPowerShell 5.1で動作。「印刷状況」画面からダウンロードできます）。事務所のパソコンに SumatraPDF をインストールし、PowerShellを管理者として実行して `powershell -ExecutionPolicy Bypass -File .\print-agent.ps1 -Setup` を実行すると、接続キー・プリンター・カセットと給紙トレイの対応を順に設定し、サインイン時に自動で起動するよう登録します（タスク名 `AraiKikou-PrintAgent`）。給紙トレイは、プリンタードライバーの給紙トレイの一覧から番号で選びます。印刷の前に、設定した給紙トレイがプリンターにあるかを確認し、無ければ別のカセットから印刷してしまわないようエラーにします。設定をやり直すと、動いている印刷係は次の確認から新しい設定を使います。`-ListTrays` でプリンターの給紙トレイの名前を一覧できます。動作の記録は同じフォルダの `print-agent.log` に残ります
 - **テーブルの追加**: 本番DBにはマイグレーションの仕組みが無いため、これらのテーブルはアプリの起動時に `src/instrumentation.ts` → `src/lib/schema-upgrades.ts` が「無ければ作る」形で自動で追加します。今後テーブルを追加するときも同じ場所に追記し、`schema.sql`・`prisma/schema.prisma` にも同じ内容を書いてください
 
 ## ユーザー管理・パスワード変更について
