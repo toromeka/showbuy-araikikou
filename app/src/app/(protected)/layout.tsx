@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { href: "/customers", label: "得意先マスタ" },
   { href: "/suppliers", label: "仕入先マスタ" },
   { href: "/products", label: "商品マスタ" },
+  { href: "/staff", label: "担当者マスタ" },
 ];
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
