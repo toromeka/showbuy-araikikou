@@ -19,11 +19,12 @@ export function decodeCsvBuffer(buf: Buffer): string {
 }
 
 /**
- * 旧システムのCSVは列見出しに全角スペースを含むことがある（例:「商　品　名」）ため、
- * 通常の空白・全角スペースを除去して比較できるようにする。
+ * 旧システムのCSVは列見出しに全角スペースを含むことがある（例:「商　品　名」）ほか、
+ * 数字が全角のことがある（例:「得意先名称１」）ため、NFKC正規化で全角英数字を半角にそろえ、
+ * 空白を除去して比較できるようにする（見出しのみが対象で、データ値は変換しない）。
  */
 export function normalizeHeader(h: string): string {
-  return h.replace(/[\s　]/g, "");
+  return h.normalize("NFKC").replace(/\s/g, "");
 }
 
 export function parseCsv(text: string): Record<string, string>[] {

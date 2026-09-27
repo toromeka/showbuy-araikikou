@@ -1,6 +1,25 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
+// next.config.ts でビルド時に埋め込んだコミット番号・日時。最新版かどうかの確認用。
+function versionLabel(): string {
+  const commit = process.env.APP_COMMIT;
+  const fmt = (iso: string | undefined) =>
+    iso
+      ? new Intl.DateTimeFormat("ja-JP", {
+          timeZone: "Asia/Tokyo",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        }).format(new Date(iso))
+      : "";
+  if (!commit) return `バージョン 不明（ビルド ${fmt(process.env.APP_BUILT_AT)}）`;
+  const date = process.env.APP_COMMIT_DATE || process.env.APP_BUILT_AT;
+  return `バージョン ${commit}（${fmt(date)} 更新）`;
+}
+
 export default async function DashboardPage() {
   const [
     customerCount,
@@ -47,7 +66,10 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-lg font-bold text-slate-800">ホーム</h1>
+      <div className="mb-6 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <h1 className="text-lg font-bold text-slate-800">ホーム</h1>
+        <p className="text-xs text-slate-500">{versionLabel()}</p>
+      </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
         {cards.map((c) => (
           <Link

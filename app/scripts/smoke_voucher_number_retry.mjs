@@ -86,8 +86,8 @@ try {
   await page.waitForURL(`${BASE_URL}/`, { timeout: 8000 });
 
   await page.goto(`${BASE_URL}/sales-vouchers/new`);
-  await page.waitForSelector("select >> nth=0");
-  await page.locator("select").first().selectOption(CUSTOMER_CODE);
+  await page.waitForSelector('input[placeholder*="F8で検索"]');
+  await page.fill('input[placeholder*="F8で検索"]', CUSTOMER_CODE);
   const row = page.locator("tbody tr").first();
   await row.locator('input[placeholder*="商品名"]').fill("番号衝突自動リトライテスト商品");
   const nums = row.locator('input[type="number"]');

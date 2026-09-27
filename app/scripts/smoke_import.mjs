@@ -31,6 +31,23 @@ const customersCsvSjis = writeCsv(
   "得意先コード,得意先名称1\nSMK001,スモークテスト商事（更新後）\n",
   "sjis",
 );
+// 旧システムの実際の出力に合わせ、見出しの数字が全角（得意先名称１など）のケース
+const customersCsvFullWidthHeader = writeCsv(
+  "customers_fullwidth_header.csv",
+  "得意先コード,得意先名称１,得意先名称２,得意先略称,フリガナ,締日,集金日,集金区分,集金備考,担当者コード\n" +
+    "SMK001,全角見出しテスト商事,,全角テスト,ｾﾞﾝｶｸﾃｽﾄ,31,20,3,,\n",
+  "sjis",
+);
+// 商品マスタ（まとめて登録する処理）: 正常行・商品名が長すぎる行・商品名が空の行・同じコードの重複行
+const productsCsvMixed = writeCsv(
+  "products_mixed.csv",
+  "商品コード,商　品　名,規　格,売上単価１\n" +
+    "SMKP01,スモーク商品（最初の行）,M8,100\n" +
+    `SMKP02,${"長".repeat(81)},M8,100\n` +
+    "SMKP03,,M8,100\n" +
+    "SMKP01,スモーク商品（後の行で上書き）,M10,250\n",
+  "sjis",
+);
 const customersCsvBadRow = writeCsv(
   "customers_badrow.csv",
   "得意先コード,得意先名称1\nSMK002,\n",
@@ -87,6 +104,34 @@ try {
   await page.waitForSelector("text=取り込み結果", { timeout: 15000 });
   text = await page.textContent("body");
   log("missing required field row skipped", /失敗（スキップ）\s*1/.test(text));
+
+  // 4. 見出しの数字が全角（得意先名称１）でも列を認識できる
+  await page.goto(`${BASE_URL}/customers/import`);
+  await page.setInputFiles('input[name="file"]', customersCsvFullWidthHeader);
+  await page.click('button:has-text("取り込み")');
+  await page.waitForSelector("text=取り込み結果", { timeout: 15000 });
+  text = await page.textContent("body");
+  log("full-width digit headers (得意先名称１) recognized", /更新\s*1/.test(text) && /失敗（スキップ）\s*0/.test(text));
+
+  await page.goto(`${BASE_URL}/customers?q=SMK001`);
+  await page.waitForSelector("table");
+  text = await page.textContent("body");
+  log("name from full-width header reflected", text.includes("全角見出しテスト商事"));
+
+  // 5. 商品マスタ: 問題のある行だけスキップされ、他の行はまとめて登録される
+  await page.goto(`${BASE_URL}/products/import`);
+  await page.setInputFiles('input[name="file"]', productsCsvMixed);
+  await page.click('button:has-text("取り込み")');
+  await page.waitForSelector("text=取り込み結果", { timeout: 15000 });
+  text = await page.textContent("body");
+  log(
+    "product import: invalid rows skipped with reasons",
+    /失敗（スキップ）\s*2/.test(text) && text.includes("商品名が80文字を超えている") && text.includes("商品名が空"),
+  );
+  await page.goto(`${BASE_URL}/products?q=SMKP01`);
+  await page.waitForSelector("table");
+  text = await page.textContent("body");
+  log("product import: duplicate code uses the later row", text.includes("スモーク商品（後の行で上書き）"));
 
   // 後片付け
   await page.goto(`${BASE_URL}/customers?q=SMK001`);

@@ -27,15 +27,15 @@ try {
   log("login", true);
 
   await page.goto(`${BASE_URL}/quotations/new`);
-  await page.waitForSelector('select >> nth=0');
+  await page.waitForSelector('input[placeholder*="F8で検索"]');
 
-  // 得意先を選択
-  const customerSelect = page.locator("select").first();
-  const optionValues = await customerSelect.locator("option").evaluateAll((opts) =>
-    opts.map((o) => o.value).filter(Boolean),
-  );
-  await customerSelect.selectOption(optionValues[0]);
-  log("customer selected", true, optionValues[0]);
+  // 得意先をF8検索ダイアログから選択
+  await page.locator('input[placeholder*="F8で検索"]').first().press("F8");
+  const firstCustomerRow = page.locator('[data-testid="search-dialog"] tbody tr').first();
+  await firstCustomerRow.waitFor();
+  const customerCode = (await firstCustomerRow.locator("td").first().textContent())?.trim();
+  await firstCustomerRow.click();
+  log("customer selected via F8 dialog", true, customerCode);
 
   await page.fill('input[placeholder="案件名 1行目"]', "テスト案件");
 

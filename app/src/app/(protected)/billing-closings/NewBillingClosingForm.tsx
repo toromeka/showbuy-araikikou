@@ -25,7 +25,7 @@ export function NewBillingClosingForm() {
 
   const [closingDay, setClosingDay] = useState("all");
   const [asOfDate, setAsOfDate] = useState(new Date().toISOString().slice(0, 10));
-  const [preview, setPreview] = useState<{ items: BillingPreviewItem[]; skippedZeroCount: number } | null>(null);
+  const [preview, setPreview] = useState<{ items: BillingPreviewItem[]; skippedZeroCount: number; skippedClosedCount: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function handlePreview(e: React.FormEvent) {
@@ -38,7 +38,11 @@ export function NewBillingClosingForm() {
         setError(result.error);
         return;
       }
-      setPreview({ items: result.items, skippedZeroCount: result.skippedZeroCount });
+      setPreview({
+        items: result.items,
+        skippedZeroCount: result.skippedZeroCount,
+        skippedClosedCount: result.skippedClosedCount,
+      });
     });
   }
 
@@ -114,7 +118,8 @@ export function NewBillingClosingForm() {
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-bold text-slate-600">
               プレビュー結果（対象 {preview.items.length.toLocaleString()}件
-              {preview.skippedZeroCount > 0 && ` / 残高・取引なしのため対象外 ${preview.skippedZeroCount}件`}）
+              {preview.skippedZeroCount > 0 && ` / 残高・取引なしのため対象外 ${preview.skippedZeroCount}件`}
+              {preview.skippedClosedCount > 0 && ` / 基準日まで締め済みのため対象外 ${preview.skippedClosedCount}件`}）
             </h2>
             {preview.items.length > 0 && (
               <button

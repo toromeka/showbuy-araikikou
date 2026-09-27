@@ -19,9 +19,20 @@ const CustomerSchema = z.object({
   address2: z.string().max(100).optional().or(z.literal("")),
   phone: z.string().max(20).optional().or(z.literal("")),
   fax: z.string().max(20).optional().or(z.literal("")),
+  mobile: z.string().max(20).optional().or(z.literal("")),
   closing_day: z.string().optional().or(z.literal("")),
   collection_day: z.string().optional().or(z.literal("")),
+  collection_type: z.string().max(10).optional().or(z.literal("")),
+  collection_note: z.string().max(200).optional().or(z.literal("")),
   billing_customer_code: z.string().max(10).optional().or(z.literal("")),
+  category1_code: z.string().max(10).optional().or(z.literal("")),
+  category2_code: z.string().max(10).optional().or(z.literal("")),
+  category3_code: z.string().max(10).optional().or(z.literal("")),
+  price_rank: z.string().optional().or(z.literal("")),
+  markup_rate: z.string().optional().or(z.literal("")),
+  tax_method: z.string().optional().or(z.literal("")),
+  calc_method: z.string().optional().or(z.literal("")),
+  rounding_method: z.string().optional().or(z.literal("")),
   note: z.string().max(200).optional().or(z.literal("")),
 });
 
@@ -38,6 +49,10 @@ function emptyToNull(v: FormDataEntryValue | null): string | null {
 function toSmallInt(v: FormDataEntryValue | null): number | null {
   const s = emptyToNull(v);
   return s === null ? null : parseInt(s, 10);
+}
+
+function toDecimal(v: FormDataEntryValue | null): string | null {
+  return emptyToNull(v);
 }
 
 export async function createCustomer(
@@ -70,9 +85,20 @@ export async function createCustomer(
       address2: emptyToNull(formData.get("address2")),
       phone: emptyToNull(formData.get("phone")),
       fax: emptyToNull(formData.get("fax")),
+      mobile: emptyToNull(formData.get("mobile")),
       closing_day: toSmallInt(formData.get("closing_day")),
       collection_day: toSmallInt(formData.get("collection_day")),
+      collection_type: emptyToNull(formData.get("collection_type")),
+      collection_note: emptyToNull(formData.get("collection_note")),
       billing_customer_code: emptyToNull(formData.get("billing_customer_code")),
+      category1_code: emptyToNull(formData.get("category1_code")),
+      category2_code: emptyToNull(formData.get("category2_code")),
+      category3_code: emptyToNull(formData.get("category3_code")),
+      price_rank: toSmallInt(formData.get("price_rank")),
+      markup_rate: toDecimal(formData.get("markup_rate")),
+      tax_method: toSmallInt(formData.get("tax_method")) ?? 0,
+      calc_method: toSmallInt(formData.get("calc_method")) ?? 0,
+      rounding_method: toSmallInt(formData.get("rounding_method")) ?? 0,
       note: emptyToNull(formData.get("note")),
     },
   });
@@ -107,9 +133,20 @@ export async function updateCustomer(
       address2: emptyToNull(formData.get("address2")),
       phone: emptyToNull(formData.get("phone")),
       fax: emptyToNull(formData.get("fax")),
+      mobile: emptyToNull(formData.get("mobile")),
       closing_day: toSmallInt(formData.get("closing_day")),
       collection_day: toSmallInt(formData.get("collection_day")),
+      collection_type: emptyToNull(formData.get("collection_type")),
+      collection_note: emptyToNull(formData.get("collection_note")),
       billing_customer_code: emptyToNull(formData.get("billing_customer_code")),
+      category1_code: emptyToNull(formData.get("category1_code")),
+      category2_code: emptyToNull(formData.get("category2_code")),
+      category3_code: emptyToNull(formData.get("category3_code")),
+      price_rank: toSmallInt(formData.get("price_rank")),
+      markup_rate: toDecimal(formData.get("markup_rate")),
+      tax_method: toSmallInt(formData.get("tax_method")) ?? 0,
+      calc_method: toSmallInt(formData.get("calc_method")) ?? 0,
+      rounding_method: toSmallInt(formData.get("rounding_method")) ?? 0,
       note: emptyToNull(formData.get("note")),
       updated_at: new Date(),
     },

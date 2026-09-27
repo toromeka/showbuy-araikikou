@@ -45,8 +45,8 @@ try {
 
   // 1. 請求更新の対象になる売上伝票を作成する（2 * 1000 = 2,000, 税10% = 200 → +2,200）
   await page.goto(`${BASE_URL}/sales-vouchers/new`);
-  await page.waitForSelector('select >> nth=0');
-  await page.locator("select").first().selectOption(CUSTOMER_CODE);
+  await page.waitForSelector('input[placeholder*="F8で検索"]');
+  await page.fill('input[placeholder*="F8で検索"]', CUSTOMER_CODE);
   const firstRow = page.locator("tbody tr").first();
   await firstRow.locator('input[placeholder*="商品名"]').fill("請求更新テスト商品");
   const numberInputs = firstRow.locator('input[type="number"]');
@@ -100,6 +100,21 @@ try {
   await page.goto(voucherUrl);
   text = await page.textContent("body");
   log("sales voucher now billed (請求確定済み, no 編集/削除)", text.includes("請求確定済み") && !text.includes("編集"));
+
+  // 4-b. 同じ締日・基準日でもう一度プレビューしても、締め済みの得意先は対象に出てこない
+  //      （前回請求残だけの実績が重複して作られ、同額の請求書が二重に出るのを防ぐ）
+  await page.goto(`${BASE_URL}/billing-closings/new`);
+  await page.waitForSelector("select");
+  await page.locator("select").selectOption("31");
+  await page.click('button:has-text("プレビュー")');
+  await page.waitForSelector("text=プレビュー結果", { timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(500);
+  text = await page.textContent("body");
+  const reappeared = (await page.locator("tbody tr", { hasText: CUSTOMER_CODE }).count()) > 0;
+  log(
+    "re-preview for same date excludes already-closed customer (二重請求防止)",
+    !reappeared && (text.includes("締め済みのため対象外") || text.includes("締め済みです")),
+  );
 
   // 5. 一覧で取消済みでないことを確認
   await page.goto(`${BASE_URL}/billing-closings`);

@@ -7,6 +7,7 @@ import {
   updatePaymentVoucher,
   type PaymentVoucherInput,
 } from "@/lib/actions/payment-vouchers";
+import { SearchDialog, openOnF8 } from "@/components/SearchDialog";
 
 type SupplierOption = { code: string; name1: string };
 type BankOption = { code: string; name: string };
@@ -69,6 +70,9 @@ export function PaymentVoucherForm({
   const [purchaseAmount, setPurchaseAmount] = useState(defaults?.purchase_amount ?? "");
   const [taxAmount, setTaxAmount] = useState(defaults?.tax_amount ?? "");
   const [lines, setLines] = useState<LineState[]>(defaults?.lines?.length ? defaults.lines : [emptyLine()]);
+  const [supplierDialogOpen, setSupplierDialogOpen] = useState(false);
+
+  const selectedSupplier = suppliers.find((s) => s.code === supplierCode);
 
   const totalAmount = useMemo(
     () => lines.reduce((sum, l) => sum + (Number(l.amount) || 0), 0),
@@ -126,20 +130,18 @@ export function PaymentVoucherForm({
       <section className="rounded-lg border border-slate-200 bg-white p-6">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-600">仕入先</span>
-            <select
+            <span className="mb-1 block text-xs font-medium text-slate-600">仕入先（F8で検索）</span>
+            <input
               value={supplierCode}
               onChange={(e) => setSupplierCode(e.target.value)}
+              onKeyDown={openOnF8(() => setSupplierDialogOpen(true))}
+              placeholder="コード入力 or F8で検索"
               required
               className="input"
-            >
-              <option value="">選択してください</option>
-              {suppliers.map((s) => (
-                <option key={s.code} value={s.code}>
-                  {s.code} - {s.name1}
-                </option>
-              ))}
-            </select>
+            />
+            <span className="mt-1 block truncate text-xs text-slate-500">
+              {supplierCode ? (selectedSupplier ? selectedSupplier.name1 : "該当する仕入先が見つかりません") : ""}
+            </span>
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-slate-600">伝票日付</span>
@@ -258,6 +260,27 @@ export function PaymentVoucherForm({
           キャンセル
         </a>
       </div>
+
+      <SearchDialog
+        open={supplierDialogOpen}
+        title="仕入先検索"
+        items={suppliers}
+        filterFn={(s, q) => {
+          const qq = q.toLowerCase();
+          return s.code.toLowerCase().includes(qq) || s.name1.toLowerCase().includes(qq);
+        }}
+        getKey={(s) => s.code}
+        columns={[
+          { header: "コード", render: (s) => s.code, className: "font-mono text-slate-500" },
+          { header: "仕入先名", render: (s) => s.name1 },
+        ]}
+        onSelect={(s) => {
+          setSupplierCode(s.code);
+          setSupplierDialogOpen(false);
+        }}
+        onClose={() => setSupplierDialogOpen(false)}
+        placeholder="仕入先コード or 仕入先名で検索"
+      />
     </form>
   );
 }

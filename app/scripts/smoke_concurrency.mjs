@@ -70,8 +70,8 @@ try {
   const createResults = await Promise.all(
     sessions.map(async ({ page }, i) => {
       await page.goto(`${BASE_URL}/sales-vouchers/new`);
-      await page.waitForSelector('select >> nth=0');
-      await page.locator("select").first().selectOption(CUSTOMER_CODE);
+      await page.waitForSelector('input[placeholder*="F8で検索"]');
+      await page.fill('input[placeholder*="F8で検索"]', CUSTOMER_CODE);
       const row = page.locator("tbody tr").first();
       await row.locator('input[placeholder*="商品名"]').fill(`同時実行テスト商品${i}`);
       const nums = row.locator('input[type="number"]');
