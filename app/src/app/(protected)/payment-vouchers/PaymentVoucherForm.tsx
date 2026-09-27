@@ -8,6 +8,7 @@ import {
   type PaymentVoucherInput,
 } from "@/lib/actions/payment-vouchers";
 import { SearchDialog, openOnF8 } from "@/components/SearchDialog";
+import { ClosingNotice } from "@/components/ClosingNotice";
 
 type SupplierOption = { code: string; name1: string };
 type BankOption = { code: string; name: string };
@@ -245,6 +246,8 @@ export function PaymentVoucherForm({
           <dd className="font-semibold text-slate-900">{Math.round(totalAmount).toLocaleString()}</dd>
         </dl>
       </section>
+
+      <ClosingNotice kind="supplier" code={supplierCode} voucherDate={voucherDate} />
 
       {error && <p className="rounded bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>}
 

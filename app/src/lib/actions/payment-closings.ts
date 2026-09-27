@@ -216,6 +216,23 @@ export async function reversePaymentClosing(id: string): Promise<{ error?: strin
   try {
     await prisma.$transaction(async (tx) => {
       await acquireClosingLock(tx, PAYMENT_CLOSING_LOCK_KEY);
+      // 取り消せるのは、各仕入先の一番新しい仕入支払更新だけ。後にある仕入支払更新の「前回残高」は、この仕入支払更新の
+      // 金額を引き継いで計算されているため、古いものだけを取り消すと残高の繰り越しが食い違ってしまう。
+      if (closing.payment_records.length > 0) {
+        const later = await tx.payment_records.findFirst({
+          where: {
+            closing_id: { not: closing.id },
+            payment_closings: { is_reversed: false },
+            OR: closing.payment_records.map((r) => ({ supplier_code: r.supplier_code, period_to: { gt: r.period_to } })),
+          },
+          orderBy: { period_to: "desc" },
+        });
+        if (later) {
+          throw new Error(
+            `この仕入支払更新より後に、同じ仕入先（${later.supplier_code}）の仕入支払更新（基準日 ${later.period_to.toISOString().slice(0, 10).replaceAll("-", "/")}）があります。新しいものから順に取り消してください。`,
+          );
+        }
+      }
       for (const record of closing.payment_records) {
         await tx.purchase_vouchers.updateMany({
           where: {

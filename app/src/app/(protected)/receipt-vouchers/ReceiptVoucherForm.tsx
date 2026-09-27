@@ -8,6 +8,7 @@ import {
   type ReceiptVoucherInput,
 } from "@/lib/actions/receipt-vouchers";
 import { SearchDialog, openOnF8 } from "@/components/SearchDialog";
+import { ClosingNotice } from "@/components/ClosingNotice";
 
 type CustomerOption = { code: string; name1: string };
 type BankOption = { code: string; name: string };
@@ -261,6 +262,8 @@ export function ReceiptVoucherForm({
           <dd className="font-semibold text-slate-900">{Math.round(totalAmount).toLocaleString()}</dd>
         </dl>
       </section>
+
+      <ClosingNotice kind="customer" code={customerCode} voucherDate={voucherDate} />
 
       {error && <p className="rounded bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>}
 

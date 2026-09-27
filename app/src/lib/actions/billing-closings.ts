@@ -222,6 +222,23 @@ export async function reverseBillingClosing(id: string): Promise<{ error?: strin
   try {
     await prisma.$transaction(async (tx) => {
       await acquireClosingLock(tx, BILLING_CLOSING_LOCK_KEY);
+      // 取り消せるのは、各得意先の一番新しい請求更新だけ。後にある請求更新の「前回残高」は、この請求更新の
+      // 金額を引き継いで計算されているため、古いものだけを取り消すと残高の繰り越しが食い違ってしまう。
+      if (closing.billing_records.length > 0) {
+        const later = await tx.billing_records.findFirst({
+          where: {
+            closing_id: { not: closing.id },
+            billing_closings: { is_reversed: false },
+            OR: closing.billing_records.map((r) => ({ customer_code: r.customer_code, period_to: { gt: r.period_to } })),
+          },
+          orderBy: { period_to: "desc" },
+        });
+        if (later) {
+          throw new Error(
+            `この請求更新より後に、同じ得意先（${later.customer_code}）の請求更新（基準日 ${later.period_to.toISOString().slice(0, 10).replaceAll("-", "/")}）があります。新しいものから順に取り消してください。`,
+          );
+        }
+      }
       for (const record of closing.billing_records) {
         const root = await tx.customers.findUnique({
           where: { code: record.customer_code },
