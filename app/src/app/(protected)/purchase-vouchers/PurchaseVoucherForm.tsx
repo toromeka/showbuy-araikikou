@@ -10,6 +10,7 @@ import {
   type PurchaseVoucherInput,
 } from "@/lib/actions/purchase-vouchers";
 import { SearchDialog, openOnF8 } from "@/components/SearchDialog";
+import { ClosingNotice } from "@/components/ClosingNotice";
 import { ProductCodeInput } from "@/components/ProductCodeInput";
 import { HANDWRITE_PRODUCT_CODE } from "@/lib/product-codes";
 
@@ -250,6 +251,8 @@ export function PurchaseVoucherForm({
           <dd className="font-semibold text-slate-900">{Math.round(totals.total).toLocaleString()}</dd>
         </dl>
       </section>
+
+      <ClosingNotice kind="supplier" code={supplierCode} voucherDate={voucherDate} />
 
       {error && <p className="rounded bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>}
 
