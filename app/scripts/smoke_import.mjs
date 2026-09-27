@@ -48,6 +48,12 @@ const productsCsvMixed = writeCsv(
     "SMKP01,スモーク商品（後の行で上書き）,M10,250\n",
   "sjis",
 );
+// ExcelでCSVを保存して、得意先コードの先頭の0が消えたケース（0998 → 998）
+const customersCsvUnpadded = writeCsv(
+  "customers_unpadded.csv",
+  "得意先コード,得意先名称1,郵便番号,住所1\n998,ゼロ補完テスト商事,920-0998,金沢市ゼロ補完町1\n",
+  "sjis",
+);
 const customersCsvBadRow = writeCsv(
   "customers_badrow.csv",
   "得意先コード,得意先名称1\nSMK002,\n",
@@ -81,7 +87,8 @@ try {
   let text = await page.textContent("body");
   log(
     "normal import (create + FK null)",
-    /新規登録\s*1/.test(text) && /1件の参照項目を空欄/.test(text),
+    // 2回目以降の実行ではテスト用の得意先が既にあるため「更新」になる
+    (/新規登録\s*1/.test(text) || /更新\s*1/.test(text)) && /1件の参照項目を空欄/.test(text),
   );
 
   // 2. Shift_JIS自動判定 + 同一コードの上書き更新
@@ -117,6 +124,32 @@ try {
   await page.waitForSelector("table");
   text = await page.textContent("body");
   log("name from full-width header reflected", text.includes("全角見出しテスト商事"));
+
+  // 4-2. 得意先コードの先頭の0が消えたCSV（998）は4桁（0998）にそろえて取り込み、
+  //      以前の取り込みで「998」のまま別に登録されていたもの（伝票の紐づきなし）は削除される
+  await page.goto(`${BASE_URL}/customers/998`);
+  if ((await page.locator('input[name="name1"]').count()) === 0) {
+    await page.goto(`${BASE_URL}/customers/new`);
+    await page.fill('input[name="code"]', "998");
+    await page.fill('input[name="name1"]', "先頭の0が消えた得意先");
+    await page.click('button:has-text("保存")');
+    await page.waitForURL(/\/customers(\?.*)?$/, { timeout: 10000 });
+  }
+  await page.goto(`${BASE_URL}/customers/import`);
+  await page.setInputFiles('input[name="file"]', customersCsvUnpadded);
+  await page.click('button:has-text("取り込み")');
+  await page.waitForSelector("text=取り込み結果", { timeout: 15000 });
+  text = (await page.textContent("body")).replace(/\s+/g, "");
+  log("unpadded customer code padded to 4 digits", text.includes("先頭に0を補って4桁のコードとして取り込みました"));
+  log("unpadded duplicate removed", text.includes("1件は、伝票などが紐づいていなかったため削除しました"));
+  await page.goto(`${BASE_URL}/customers/0998`);
+  log(
+    "postal code stored on the 4-digit customer",
+    (await page.inputValue('input[name="postal_code"]')) === "920-0998" &&
+      (await page.inputValue('input[name="name1"]')) === "ゼロ補完テスト商事",
+  );
+  await page.goto(`${BASE_URL}/customers/998`);
+  log("unpadded duplicate no longer exists", (await page.locator('input[name="name1"]').count()) === 0);
 
   // 5. 商品マスタ: 問題のある行だけスキップされ、他の行はまとめて登録される
   await page.goto(`${BASE_URL}/products/import`);

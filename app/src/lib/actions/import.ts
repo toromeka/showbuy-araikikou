@@ -9,8 +9,43 @@ import {
   toIntOrNull,
   toDecimalOrNull,
   ErrorCollector,
+  padPartnerCode,
   type ImportResult,
 } from "@/lib/csv";
+
+// 以前の取り込みで、先頭の0が無いコード（6 など）のまま別の得意先・仕入先として登録されてしまったものを片付ける。
+// 4桁のコード（0006）の側に取り込み直した後で、伝票などが1件も紐づいていないものだけを削除する
+// （紐づいているものは削除できないため、画面に表示して手で確認してもらう）。
+async function removeUnpaddedDuplicates(
+  kind: "customers" | "suppliers",
+  rawCodes: string[],
+): Promise<{ removed: number; kept: string[] }> {
+  let removed = 0;
+  const kept: string[] = [];
+  if (rawCodes.length === 0) return { removed, kept };
+  if (kind === "customers") {
+    // 片付ける得意先どうしの請求先の指定を先に外す（外さないと、請求先として参照されている側が削除できない）
+    await prisma.customers.updateMany({
+      where: { code: { in: rawCodes }, billing_customer_code: { not: null } },
+      data: { billing_customer_code: null },
+    });
+  }
+  for (const code of rawCodes) {
+    const exists =
+      kind === "customers"
+        ? await prisma.customers.findUnique({ where: { code } })
+        : await prisma.suppliers.findUnique({ where: { code } });
+    if (!exists) continue;
+    try {
+      if (kind === "customers") await prisma.customers.delete({ where: { code } });
+      else await prisma.suppliers.delete({ where: { code } });
+      removed++;
+    } catch {
+      kept.push(code);
+    }
+  }
+  return { removed, kept };
+}
 
 async function readCsvFile(formData: FormData): Promise<Record<string, string>[] | null> {
   const file = formData.get("file");
@@ -46,8 +81,16 @@ export async function importCustomersCsv(
   // 請求先コード（得意先自身への自己参照）は全件登録後の第2パスで設定する
   const billingRefs: { code: string; billingCustomerCode: string }[] = [];
 
+  let paddedCodes = 0;
+  const unpaddedCodes: string[] = [];
+
   for (const [i, row] of rows.entries()) {
-    const code = emptyToNull(row["得意先コード"]);
+    const rawCode = emptyToNull(row["得意先コード"]);
+    const code = padPartnerCode(rawCode);
+    if (rawCode && code !== rawCode) {
+      paddedCodes++;
+      unpaddedCodes.push(rawCode);
+    }
     const name1 = emptyToNull(row["得意先名称1"]);
     if (!code) {
       errors.add(`${i + 2}行目: 得意先コードが空のためスキップしました`);
@@ -84,7 +127,7 @@ export async function importCustomersCsv(
       category3_code = null;
     }
 
-    const billingCode = emptyToNull(row["請求先コード"]);
+    const billingCode = padPartnerCode(emptyToNull(row["請求先コード"]));
     if (billingCode) billingRefs.push({ code, billingCustomerCode: billingCode });
 
     const data = {
@@ -114,6 +157,8 @@ export async function importCustomersCsv(
       tax_method: toIntOrNull(row["課税方式"]) ?? 0,
       calc_method: toIntOrNull(row["計算方式"]) ?? 0,
       rounding_method: toIntOrNull(row["丸め方式"]) ?? 0,
+      // データ移行で旧マスタ（無効）として登録された得意先も、今のマスタに載っていれば有効に戻す
+      is_active: true,
       updated_at: new Date(),
     };
 
@@ -145,6 +190,8 @@ export async function importCustomersCsv(
     });
   }
 
+  const cleanup = await removeUnpaddedDuplicates("customers", unpaddedCodes);
+
   revalidatePath("/customers");
   return {
     total: rows.length,
@@ -153,6 +200,9 @@ export async function importCustomersCsv(
     failed: errors.count,
     nulledRefs,
     errors: errors.errors,
+    paddedCodes,
+    removedDuplicates: cleanup.removed,
+    keptDuplicates: cleanup.kept,
   };
 }
 
@@ -176,8 +226,16 @@ export async function importSuppliersCsv(
   let updated = 0;
   let nulledRefs = 0;
 
+  let paddedCodes = 0;
+  const unpaddedCodes: string[] = [];
+
   for (const [i, row] of rows.entries()) {
-    const code = emptyToNull(row["仕入先コード"]);
+    const rawCode = emptyToNull(row["仕入先コード"]);
+    const code = padPartnerCode(rawCode);
+    if (rawCode && code !== rawCode) {
+      paddedCodes++;
+      unpaddedCodes.push(rawCode);
+    }
     const name1 = emptyToNull(row["仕入先名称1"]);
     if (!code) {
       errors.add(`${i + 2}行目: 仕入先コードが空のためスキップしました`);
@@ -212,6 +270,8 @@ export async function importSuppliersCsv(
       tax_method: toIntOrNull(row["課税方式"]) ?? 0,
       calc_method: toIntOrNull(row["計算方式"]) ?? 0,
       rounding_method: toIntOrNull(row["丸め方式"]) ?? 0,
+      // データ移行で旧マスタ（無効）として登録された仕入先も、今のマスタに載っていれば有効に戻す
+      is_active: true,
       updated_at: new Date(),
     };
 
@@ -229,8 +289,20 @@ export async function importSuppliersCsv(
     }
   }
 
+  const cleanup = await removeUnpaddedDuplicates("suppliers", unpaddedCodes);
+
   revalidatePath("/suppliers");
-  return { total: rows.length, created, updated, failed: errors.count, nulledRefs, errors: errors.errors };
+  return {
+    total: rows.length,
+    created,
+    updated,
+    failed: errors.count,
+    nulledRefs,
+    errors: errors.errors,
+    paddedCodes,
+    removedDuplicates: cleanup.removed,
+    keptDuplicates: cleanup.kept,
+  };
 }
 
 // ---------------------------------------------------------------------

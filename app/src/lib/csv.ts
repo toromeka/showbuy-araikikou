@@ -56,6 +56,14 @@ export function toDecimalOrNull(v: string | undefined): string | null {
   return Number.isNaN(n) ? null : s;
 }
 
+// 得意先・仕入先のコードは4桁（例: 0006）。CSVをExcelで開いて保存すると先頭の0が消える（0006 → 6）ため、
+// 数字だけで4桁未満のコードは、先頭に0を補って4桁にそろえる。商品コード（「1」=手打ち商品など）は対象外。
+export const PARTNER_CODE_LENGTH = 4;
+export function padPartnerCode(code: string | null): string | null {
+  if (code && /^\d+$/.test(code) && code.length < PARTNER_CODE_LENGTH) return code.padStart(PARTNER_CODE_LENGTH, "0");
+  return code;
+}
+
 export type ImportResult = {
   message?: string;
   total?: number;
@@ -64,6 +72,12 @@ export type ImportResult = {
   failed?: number;
   nulledRefs?: number;
   errors?: string[];
+  // 先頭の0を補ってコードを4桁にそろえた行数
+  paddedCodes?: number;
+  // 以前の取り込みで先頭の0が無いコード（6 など）のまま登録されていたものを削除した件数
+  removedDuplicates?: number;
+  // 同上で、伝票などが紐づいているため削除できなかったコード
+  keptDuplicates?: string[];
 };
 
 const MAX_ERRORS_SHOWN = 20;
