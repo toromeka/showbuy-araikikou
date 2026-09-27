@@ -3,12 +3,13 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import {
   escapeHtml,
+  fitText,
   htmlToPdfBuffer,
   jpDate,
   pdfPage,
   qtyStr,
   slipCompanyHtml,
-  SLIP_COMPANY_STYLE,
+  SLIP_BASE_STYLE,
   unitPriceStr,
   yen,
 } from "@/lib/pdf";
@@ -21,6 +22,9 @@ import type { quotation_lines } from "@/generated/prisma/client";
 // 印鑑は手で押すため、右上に押印用の枠だけを印刷する。
 // tax_calculated は「見積単価に消費税を含めたかどうか」を示すだけのフラグなので、下部の注記の文言だけを切り替える。
 const ROWS_PER_PAGE = 19;
+// 本文の文字の大きさ（見本の見積書の実測で約11pt）と、商品名欄の文字を置ける幅
+const FONT_PX = 14.5;
+const NAME_WIDTH_MM = 77;
 
 type Row = { kind: "line"; line: quotation_lines } | { kind: "total" };
 
@@ -61,12 +65,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const l = row.line;
     // 階層見積の見出し行は、商品名欄に見出しだけを印刷する（金額の集計には含まれない）
     if (l.level > 0) {
-      return `<tr><td class="c">${no}</td><td class="name heading" style="padding-left:${1.5 + (l.level - 1) * 3}mm">${escapeHtml(l.product_name)}</td><td></td><td></td><td></td><td></td></tr>`;
+      return `<tr><td class="c">${no}</td><td class="name heading" style="padding-left:${1.5 + (l.level - 1) * 3}mm">${fitText(l.product_name, NAME_WIDTH_MM - (l.level - 1) * 3, FONT_PX)}</td><td></td><td></td><td></td><td></td></tr>`;
     }
     return `
       <tr>
         <td class="c">${no}</td>
-        <td class="name"><div>${escapeHtml(l.product_name)}</div>${l.spec ? `<div>${escapeHtml(l.spec)}</div>` : ""}</td>
+        <td class="name"><div>${fitText(l.product_name, NAME_WIDTH_MM, FONT_PX)}</div>${l.spec ? `<div>${fitText(l.spec, NAME_WIDTH_MM, FONT_PX)}</div>` : ""}</td>
         <td class="r">${qtyStr(l.quantity)}</td>
         <td class="c">${escapeHtml(l.unit)}</td>
         <td class="r">${l.quote_price != null ? unitPriceStr(l.quote_price) : ""}</td>
@@ -75,7 +79,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   };
 
   const condition = (label: string, value: string | null) =>
-    `<div class="cond"><span class="cond-label">${label}</span>：${escapeHtml(value)}</div>`;
+    `<div class="cond">${label}：${fitText(value, 70, FONT_PX)}</div>`;
 
   const bodyHtml = pages
     .map((pageRows, pageIndex) => {
@@ -87,14 +91,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       <div class="q-title">御　見　積　書</div>
       <div class="q-no">No. ${escapeHtml(quotation.voucher_no)}${totalPages > 1 ? `<span class="q-pageno">（${pageIndex + 1}／${totalPages}枚目）</span>` : ""}</div>
       <div class="q-date">${jpDate(quotation.quotation_date)}</div>
-      <div class="q-cust"><span class="q-cust-name">${escapeHtml(quotation.customers.name1)}</span><span>御中</span></div>
-      ${quotation.counterpart_staff ? `<div class="q-contact">${escapeHtml(quotation.counterpart_staff)}　様</div>` : ""}
+      <div class="q-cust"><span>${fitText(quotation.customers.name1, 68, 19)}</span><span>御中</span></div>
+      ${quotation.counterpart_staff ? `<div class="q-contact">${fitText(quotation.counterpart_staff, 60, 18)}　様</div>` : ""}
       <div class="q-amount"><span>御見積金額</span><span>¥${yen(quotation.quote_amount)}-</span></div>
-      <div class="q-company">${slipCompanyHtml(company)}</div>
+      <div class="q-company sc-company">${slipCompanyHtml(company)}</div>
       <table class="q-seals"><tr><td></td><td></td><td></td></tr></table>
       <div class="q-project">
-        <div>${escapeHtml(quotation.project_name1)}</div>
-        <div>${escapeHtml(quotation.project_name2)}</div>
+        <div>${fitText(quotation.project_name1, 125, FONT_PX)}</div>
+        <div>${fitText(quotation.project_name2, 125, FONT_PX)}</div>
       </div>
       <div class="q-cond-left">
         ${condition("受渡場所", quotation.delivery_place)}
@@ -118,40 +122,36 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   // 位置はすべてA4用紙の左上からのmmで指定する（余白0で出力）
   const extraStyle = `
-    @page { size: A4; margin: 0; }
-    body { color: #111; }
-    .q-page { position: relative; width: 210mm; height: 297mm; overflow: hidden; page-break-after: always; }
+    ${SLIP_BASE_STYLE}
+    .q-page { position: relative; width: 210mm; height: 297mm; overflow: hidden; page-break-after: always; font-size: ${FONT_PX}px; }
     .q-page:last-child { page-break-after: auto; }
     .q-page > * { position: absolute; }
-    .q-title { left: 70mm; top: 16mm; width: 67mm; text-align: center; font-size: 25px; font-weight: 700; border-bottom: 0.4mm solid #111; padding-bottom: 0.5mm; white-space: nowrap; }
-    .q-no { right: 10mm; top: 16.5mm; min-width: 22mm; font-size: 13px; text-align: right; border-bottom: 0.25mm solid #111; white-space: nowrap; }
-    .q-pageno { font-size: 9px; margin-left: 1mm; }
-    .q-date { right: 10mm; top: 23mm; min-width: 34mm; font-size: 13px; text-align: right; border-bottom: 0.25mm solid #111; white-space: nowrap; }
-    .q-cust { left: 15.5mm; top: 38mm; width: 82mm; display: flex; justify-content: space-between; align-items: baseline; font-size: 15px; border-bottom: 0.3mm solid #111; padding-bottom: 0.3mm; white-space: nowrap; }
-    .q-cust-name { font-size: 16px; overflow: hidden; }
-    .q-contact { left: 15.5mm; top: 44.5mm; width: 78mm; text-align: right; font-size: 15px; white-space: nowrap; }
-    .q-amount { left: 15.5mm; top: 54mm; width: 70mm; display: flex; justify-content: space-between; align-items: baseline; font-size: 16px; font-weight: 700; border-bottom: 0.3mm solid #111; padding-bottom: 0.3mm; white-space: nowrap; }
-    .q-company { right: 10mm; top: 40.5mm; text-align: right; font-size: 11px; line-height: 1.45; }
-    .q-seals { left: 148mm; top: 61mm; width: 51.5mm; border-collapse: collapse; table-layout: fixed; }
-    .q-seals td { border: 0.25mm solid #111; height: 15mm; }
-    .q-project { left: 17mm; top: 68.5mm; width: 125mm; font-size: 13px; line-height: 1.3; }
-    .q-project div { white-space: nowrap; overflow: hidden; min-height: 1.3em; }
+    .q-title { left: 70mm; top: 15mm; width: 67mm; text-align: center; font-size: 28px; font-weight: 700; line-height: 1.2; border-bottom: 0.4mm solid #000; white-space: nowrap; }
+    .q-no { right: 10mm; top: 16.5mm; min-width: 24mm; text-align: right; border-bottom: 0.3mm solid #000; white-space: nowrap; }
+    .q-pageno { font-size: 11px; margin-left: 1mm; }
+    .q-date { right: 10mm; top: 23mm; min-width: 36mm; text-align: right; border-bottom: 0.3mm solid #000; white-space: nowrap; }
+    .q-cust { left: 15.5mm; top: 37.5mm; min-width: 82mm; display: flex; justify-content: space-between; align-items: baseline; gap: 4mm; font-size: 19px; border-bottom: 0.3mm solid #000; white-space: nowrap; }
+    .q-contact { left: 15.5mm; top: 44.5mm; width: 78mm; text-align: right; font-size: 18px; white-space: nowrap; }
+    .q-amount { left: 15.5mm; top: 53.5mm; min-width: 70mm; display: flex; justify-content: space-between; align-items: baseline; gap: 6mm; font-size: 19px; font-weight: 700; border-bottom: 0.3mm solid #000; white-space: nowrap; }
+    .q-company { right: 10mm; top: 40mm; }
+    .q-seals { left: 148mm; top: 61.5mm; width: 51.5mm; border-collapse: collapse; table-layout: fixed; }
+    .q-seals td { border: 0.3mm solid #000; height: 15mm; }
+    .q-project { left: 17mm; top: 68mm; width: 128mm; line-height: 1.25; }
+    .q-project div { white-space: nowrap; min-height: 1.25em; }
     .q-cond-left { left: 15.5mm; top: 79mm; width: 91.5mm; }
     .q-cond-right { left: 109.5mm; top: 79mm; width: 91.5mm; }
-    .cond { height: 6.6mm; padding-top: 1.2mm; border-bottom: 0.25mm solid #111; font-size: 13px; white-space: nowrap; overflow: hidden; }
-    .q-table { left: 15mm; top: 99.5mm; width: 186mm; border-collapse: collapse; table-layout: fixed; border: 0.4mm solid #111; }
-    .q-table th, .q-table td { border: 0.25mm solid #111; height: 8.3mm; padding: 0 1.5mm; overflow: hidden; white-space: nowrap; font-size: 13.5px; line-height: 1.15; }
-    .q-table th { height: 8.5mm; font-weight: 700; text-align: center; background: #e5e7eb; }
-    .q-table td.name { font-size: 12.5px; }
+    .cond { height: 6.6mm; padding-top: 1mm; border-bottom: 0.3mm solid #000; white-space: nowrap; overflow: hidden; }
+    .q-table { left: 15mm; top: 99.5mm; width: 186mm; border-collapse: collapse; table-layout: fixed; border: 0.4mm solid #000; }
+    .q-table th, .q-table td { border: 0.3mm solid #000; height: 8.3mm; padding: 0 1.5mm; overflow: hidden; white-space: nowrap; line-height: 1.05; }
+    .q-table th { height: 8.5mm; text-align: center; background: #e5e7eb; }
     .q-table td.heading { font-weight: 700; }
-    .q-table td.total-label { padding-left: 10mm; letter-spacing: 0.1em; }
-    .q-remarks { left: 17mm; top: 268mm; width: 184mm; display: flex; gap: 2mm; font-size: 13px; line-height: 1.35; }
+    .q-table td.total-label { padding-left: 10mm; }
+    .q-remarks { left: 17mm; top: 267.5mm; width: 184mm; display: flex; gap: 2mm; line-height: 1.3; }
     .q-remarks-label { font-weight: 700; white-space: nowrap; }
-    .q-remarks-text { white-space: pre-wrap; max-height: 2.7em; overflow: hidden; }
-    .q-tax-note { left: 15mm; top: 280mm; width: 186mm; border-top: 0.25mm solid #111; padding: 1.5mm 0 0 8mm; font-size: 13px; }
+    .q-remarks-text { white-space: pre-wrap; max-height: 2.6em; overflow: hidden; }
+    .q-tax-note { left: 15mm; top: 280mm; width: 186mm; border-top: 0.3mm solid #000; padding: 1.5mm 0 0 8mm; }
     .c { text-align: center; }
     .r { text-align: right; }
-    ${SLIP_COMPANY_STYLE}
   `;
 
   const html = pdfPage({ title: `見積書_${quotation.voucher_no}`, bodyHtml, extraStyle });
