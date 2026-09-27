@@ -8,6 +8,11 @@ FROM mcr.microsoft.com/playwright:v1.62.1-noble
 
 WORKDIR /app
 
+# 納品書・見積書の印刷に使う日本語の等幅フォント（IPAゴシック。見本の伝票のMSゴシックと字形・文字幅が互換）
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends fonts-ipafont-gothic \
+  && rm -rf /var/lib/apt/lists/*
+
 # 依存関係だけ先にコピーしてキャッシュを効かせる
 COPY package.json package-lock.json ./
 RUN npm ci

@@ -74,6 +74,38 @@ export function unitPriceStr(n: { toString(): string } | number | null | undefin
   return Number(n).toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// 納品書・見積書に使うフォント。見本の伝票（MSゴシック）と字形・文字幅が互換の等幅フォント「IPAゴシック」
+// （Dockerfileで fonts-ipafont-gothic を導入）を、数字・英字も含めてすべての文字に使う。
+// 等幅なので全角=1文字幅、半角=0.5文字幅となり、文字数から印刷幅を正確に見積もれる（fitText）。
+export const SLIP_FONT = `"IPAGothic", "IPAゴシック", monospace`;
+
+const PX_PER_MM = 96 / 25.4;
+
+function isHalfWidth(ch: string): boolean {
+  const c = ch.codePointAt(0) ?? 0;
+  return c <= 0x7e || (c >= 0xff61 && c <= 0xff9f);
+}
+
+// 文字列の幅（全角1文字=1）
+export function emWidth(s: string): number {
+  let w = 0;
+  for (const ch of s) w += isHalfWidth(ch) ? 0.5 : 1;
+  return w;
+}
+
+// 欄の幅（mm）に収まらない長い文字は、その欄だけ文字を小さくして印刷する（最小は基準の6割）
+export function fitText(s: string | null | undefined, widthMm: number, basePx: number): string {
+  const text = s ?? "";
+  const w = emWidth(text);
+  const maxPx = (widthMm * PX_PER_MM) / Math.max(w, 1);
+  if (w === 0 || maxPx >= basePx) return escapeHtml(text);
+  const px = Math.max(basePx * 0.6, Math.floor(maxPx * 10) / 10);
+  return `<span style="font-size:${px}px">${escapeHtml(text)}</span>`;
+}
+
+// 「TEL(076)…」は詰めて、「TEL 076-…」のように数字で始まる場合は空白を入れる
+const telSep = (v: string) => (/^[0-9０-９]/.test(v) ? " " : "");
+
 const LEGAL_FORMS = ["有限会社", "株式会社", "合同会社", "合資会社", "合名会社"];
 
 // 納品書・見積書の右側に印刷する自社の表記（見本の伝票に合わせて、「有限会社」を小さく、
@@ -88,15 +120,20 @@ export function slipCompanyHtml(company: CompanySettings | null): string {
   return `
     <div class="sc-name">${form ? `<span class="sc-form">${escapeHtml(form)}</span>` : ""}<span class="sc-body">${escapeHtml(body)}</span></div>
     ${company.postal_code || addr ? `<div class="sc-addr">${company.postal_code ? `〒${escapeHtml(company.postal_code)} ` : ""}${escapeHtml(addr)}</div>` : ""}
-    ${company.phone ? `<div>TEL ${escapeHtml(company.phone)}</div>` : ""}
-    ${company.fax ? `<div>FAX ${escapeHtml(company.fax)}</div>` : ""}`;
+    ${company.phone ? `<div>TEL${telSep(company.phone)}${escapeHtml(company.phone)}</div>` : ""}
+    ${company.fax ? `<div>FAX${telSep(company.fax)}${escapeHtml(company.fax)}</div>` : ""}`;
 }
 
-export const SLIP_COMPANY_STYLE = `
-  .sc-name { white-space: nowrap; margin-bottom: 1.2mm; }
-  .sc-form { font-size: 9px; letter-spacing: 0.35em; margin-right: 1.5mm; }
-  .sc-body { font-size: 15px; font-weight: 700; letter-spacing: 0.9em; margin-right: -0.9em; }
-  .sc-addr { font-size: 10.5px; letter-spacing: 0.08em; white-space: nowrap; }
+// 納品書・見積書の共通スタイル（フォントと自社の表記）
+export const SLIP_BASE_STYLE = `
+  @page { size: A4; margin: 0; }
+  html, body { font-family: ${SLIP_FONT}; color: #000; }
+  th { font-weight: 400; }
+  .sc-company { text-align: right; font-size: 13.5px; line-height: 1.3; }
+  .sc-name { white-space: nowrap; margin-bottom: 1mm; }
+  .sc-form { font-size: 12px; letter-spacing: 0.4em; margin-right: 1mm; }
+  .sc-body { font-size: 19px; font-weight: 700; letter-spacing: 0.9em; margin-right: -0.9em; }
+  .sc-addr { letter-spacing: 0.1em; white-space: nowrap; }
 `;
 
 export function todayStr(): string {

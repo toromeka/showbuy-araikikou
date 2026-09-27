@@ -118,7 +118,7 @@ Next.js（App Router）+ TypeScript + Prisma + Auth.js（NextAuth v5, Credential
 - **請求書**（`/billing-closings/[id]/records/[recordId]/print`）: 請求更新の実績（`billing_records`）1件から生成します。「今回売上明細」は、その請求グループ（請求先に紐づく子アカウントも含む）に属し、かつその実績の対象期間（`period_from`〜`period_to`）に該当する売上伝票を都度再集計したものです。これは請求更新の取り消し処理が対象伝票を再特定するのに使っているのと同じ絞り込み条件なので、中間テーブルを持たずに「この請求に何が含まれていたか」を後から正確に再現できます
 - 会社情報（自社名・住所・電話・FAX・適格請求書発行事業者登録番号）は `company_settings` テーブル（管理者メニューの「自社情報」画面で変更できます）から、振込先情報は `banks` テーブルの `is_own_company = true` の行から取得して各PDFに印字します（振込先が未登録の場合は単に非表示になります）
 - 得意先名のあとの敬称は、`customers.honorific` が数値コードで意味の対応表がスキーマ上どこにもない（既存のマスタ画面でも生の値をそのまま表示しているだけ）ため、PDFでは一律「御中」を付けています。実際の敬称ルールと異なる場合は個別に見直してください
-- PDF生成は、サーバー上でPlaywright（Chromium）を都度起動してHTMLを印刷する方式です。日本語フォント（Noto Sans CJK）が入っている環境が前提のため、本番環境に配置する際は `npx playwright install chromium` を実行してブラウザ本体を用意してください（`package.json` の `dependencies` に `playwright` を含めています）
+- PDF生成は、サーバー上でPlaywright（Chromium）を都度起動してHTMLを印刷する方式です。納品書・見積書は、見本の伝票（MSゴシック）と字形・文字幅が互換の等幅フォント「IPAゴシック」で、数字・英字も含めて印刷します（本番は Dockerfile で `fonts-ipafont-gothic` を導入。欄に収まらない長い文字は、その欄だけ自動で文字を小さくします）。日本語フォントが入っている環境が前提のため、本番環境に配置する際は `npx playwright install chromium` を実行してブラウザ本体を用意してください（`package.json` の `dependencies` に `playwright` を含めています）
 
 ## ユーザー管理・パスワード変更について
 
