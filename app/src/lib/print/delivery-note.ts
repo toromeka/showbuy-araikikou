@@ -21,6 +21,10 @@ import type { sales_voucher_lines, sales_vouchers, customers, company_settings }
 // 上下の区切りがA4のちょうど半分（148.5mm）のミシン目に来るようにしている。
 // 明細が7品番を超える場合は複数枚に分けて出力し、小計・合計は最終ページに記載する。
 const LINES_PER_SLIP = 7;
+// 納品書用の帳票用紙（プリンターのカセット3）のミシン目の位置: A4用紙の上端から148.5mm（ちょうど半分）。
+// 2026-09 に実際の用紙に印刷して、納品書と納品書（控）の区切りがミシン目に合うことを確認済み。
+// レイアウトを変えるときも、上半分（納品書）・下半分（納品書（控））の区切りはこの位置に合わせること。
+const PERFORATION_MM = 148.5;
 // 本文の文字の大きさ（見本の伝票の実測で約11pt）と、商品名欄の文字を置ける幅
 const FONT_PX = 14.5;
 const NAME_WIDTH_MM = 63;
@@ -154,7 +158,7 @@ export async function deliveryNotePdf(id: string): Promise<PrintedPdf | null> {
     ${SLIP_BASE_STYLE}
     .dn-page { position: relative; width: 210mm; height: 297mm; overflow: hidden; page-break-after: always; }
     .dn-page:last-child { page-break-after: auto; }
-    .dn-half { position: relative; width: 210mm; height: 148.5mm; overflow: hidden; font-size: ${FONT_PX}px; }
+    .dn-half { position: relative; width: 210mm; height: ${PERFORATION_MM}mm; overflow: hidden; font-size: ${FONT_PX}px; }
     .dn-half > * { position: absolute; }
     .dn-title { left: 73mm; top: 9mm; width: 64mm; text-align: center; font-size: 27px; font-weight: 700; line-height: 1.2; border-bottom: 0.4mm solid #000; white-space: nowrap; }
     .dn-pageno { left: 73mm; top: 20.5mm; width: 64mm; text-align: center; font-size: 11px; }

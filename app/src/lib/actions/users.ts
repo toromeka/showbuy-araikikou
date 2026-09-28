@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, isAdmin } from "@/lib/current-user";
+import { INITIAL_PASSWORD } from "@/lib/initial-password";
 
 export type UserFormState = {
   errors?: Record<string, string[]>;
@@ -134,6 +135,22 @@ export async function resetUserPassword(id: string, _prev: UserFormState, formDa
     data: { password_hash: await bcrypt.hash(password.data.password, 10), updated_at: new Date() },
   });
   return { done: true, message: "パスワードを変更しました。新しいパスワードを本人に伝えてください。" };
+}
+
+// パスワードを忘れたユーザーのパスワードを、初期パスワード（changeme123）に戻す（管理者のみ）。
+// 本人はそのパスワードでログインし、ホーム画面の警告からパスワード変更画面で新しいパスワードを設定する。
+export async function resetUserPasswordToInitial(id: string): Promise<{ error?: string; message?: string }> {
+  const denied = await requireAdmin();
+  if (denied) return { error: denied };
+  const target = await prisma.users.findUnique({ where: { id } });
+  if (!target) return { error: "対象のユーザーが見つかりません。" };
+  await prisma.users.update({
+    where: { id },
+    data: { password_hash: await bcrypt.hash(INITIAL_PASSWORD, 10), updated_at: new Date() },
+  });
+  return {
+    message: `${target.display_name} さんのパスワードを初期パスワード（${INITIAL_PASSWORD}）に戻しました。ログインしたら、すぐにパスワードを変更するよう伝えてください。`,
+  };
 }
 
 export async function toggleUserActive(id: string): Promise<{ error?: string }> {

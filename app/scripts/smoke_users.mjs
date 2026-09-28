@@ -3,6 +3,7 @@
 // - 一般ユーザーにはユーザー管理・データ移行のメニューが出ず、画面も開けない
 // - 本人がパスワードを変更でき（今のパスワード違い・確認不一致はエラー）、新しいパスワードでログインできる
 // - 管理者が無効化すると、ログイン中の画面も次の操作から使えなくなり、再ログインもできない
+// - 管理者が「パスワードを初期値に戻す」と、初期パスワードでログインでき、変更を促す警告が出る
 // - 自分自身の無効化・最後の管理者を一般に変更することはできない
 // 事前に `npm run dev` でアプリを起動しておいてください（admin / changeme123 でログインできること）。
 //   node scripts/smoke_users.mjs
@@ -123,6 +124,28 @@ try {
   const relogin = await login(LOGIN_ID, PASS2);
   log("login with new password", relogin.ok);
   await relogin.context.close();
+
+  // 3-2. 管理者が「パスワードを初期値に戻す」→ 初期パスワードでログインでき、ホーム画面に変更を促す警告が出る
+  await admin.page.goto(`${BASE_URL}/users`);
+  admin.dialogs.length = 0;
+  await admin.page.locator("tbody tr", { hasText: LOGIN_ID }).locator("button", { hasText: "パスワードを初期値に戻す" }).click();
+  await admin.page.waitForTimeout(1500);
+  log("admin resets password to initial", admin.dialogs.some((m) => m.includes("初期パスワード（changeme123）に戻しました")));
+  const initialLogin = await login(LOGIN_ID, "changeme123");
+  log("login with initial password after reset", initialLogin.ok);
+  log("initial password warning shown after reset", initialLogin.ok && (await body(initialLogin.page)).includes("パスワードが初期設定のまま"));
+  await initialLogin.context.close();
+  const oldLogin = await login(LOGIN_ID, PASS2);
+  log("previous password no longer works", !oldLogin.ok);
+  await oldLogin.context.close();
+  // 以降の確認のため、元のパスワードに戻す
+  await admin.page.locator("tbody tr", { hasText: LOGIN_ID }).locator("a").first().click();
+  await admin.page.waitForURL(/\/users\/[0-9a-f-]+$/);
+  const resetSection = admin.page.locator("section", { hasText: "パスワードの再設定" });
+  await resetSection.locator('input[name="password"]').fill(PASS2);
+  await resetSection.locator('input[name="password_confirm"]').fill(PASS2);
+  await resetSection.locator('button:has-text("パスワードを再設定")').click();
+  await admin.page.waitForSelector("text=パスワードを変更しました", { timeout: 8000 });
 
   // 4. 管理者が無効化 → ログイン中の画面も使えなくなり、再ログインもできない
   await admin.page.goto(`${BASE_URL}/users`);

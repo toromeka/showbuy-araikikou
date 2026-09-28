@@ -2,6 +2,7 @@ import Link from "next/link";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/current-user";
+import { INITIAL_PASSWORD } from "@/lib/initial-password";
 
 // next.config.ts でビルド時に埋め込んだコミット番号・日時。最新版かどうかの確認用。
 function versionLabel(): string {
@@ -27,7 +28,7 @@ async function usesInitialPassword(): Promise<boolean> {
   const me = await getCurrentUser();
   if (!me) return false;
   const user = await prisma.users.findUnique({ where: { id: me.id }, select: { password_hash: true } });
-  return !!user && (await bcrypt.compare("changeme123", user.password_hash));
+  return !!user && (await bcrypt.compare(INITIAL_PASSWORD, user.password_hash));
 }
 
 export default async function DashboardPage() {
