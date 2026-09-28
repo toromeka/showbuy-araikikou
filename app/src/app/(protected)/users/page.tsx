@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, isAdmin } from "@/lib/current-user";
 import { ToggleActiveButton } from "./ToggleActiveButton";
+import { ResetPasswordButton } from "./ResetPasswordButton";
 
 const ROLE_LABEL: Record<string, string> = { admin: "管理者", staff: "一般" };
 
@@ -57,7 +58,9 @@ export default async function UsersPage() {
                     <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500">無効</span>
                   )}
                 </td>
-                <td className="px-4 py-2 text-right">
+                <td className="px-4 py-2 text-right whitespace-nowrap">
+                  <ResetPasswordButton id={u.id} name={u.display_name} />
+                  <span className="mx-2 text-slate-300">|</span>
                   <ToggleActiveButton id={u.id} isActive={u.is_active} name={u.display_name} />
                 </td>
               </tr>
