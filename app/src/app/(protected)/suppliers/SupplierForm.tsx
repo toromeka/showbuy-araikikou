@@ -43,7 +43,7 @@ export function SupplierForm({
     <form action={formAction} className="max-w-3xl space-y-6">
       <section className="rounded-lg border border-slate-200 bg-white p-6">
         <h2 className="mb-4 text-sm font-bold text-slate-600">基本情報</h2>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="仕入先コード" error={state.errors?.code}>
             <input name="code" defaultValue={defaults?.code} disabled={isEdit} required className="input" />
           </Field>
@@ -74,7 +74,7 @@ export function SupplierForm({
 
       <section className="rounded-lg border border-slate-200 bg-white p-6">
         <h2 className="mb-4 text-sm font-bold text-slate-600">連絡先</h2>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="郵便番号">
             <input name="postal_code" defaultValue={defaults?.postal_code ?? ""} className="input" />
           </Field>
@@ -99,7 +99,7 @@ export function SupplierForm({
 
       <section className="rounded-lg border border-slate-200 bg-white p-6">
         <h2 className="mb-4 text-sm font-bold text-slate-600">締め・支払・計算方式</h2>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="締日">
             <input
               type="number"

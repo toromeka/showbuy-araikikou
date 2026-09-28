@@ -11,7 +11,7 @@ export default async function StaffPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-bold text-slate-800">担当者マスタ（{staff.length.toLocaleString()}件）</h1>
         <Link
           href="/staff/new"
@@ -25,7 +25,7 @@ export default async function StaffPage() {
         退職などで使わなくなった担当者は「無効化」してください。過去の伝票・得意先には残ったまま、入力画面の担当者の選択肢から外れます。
       </p>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-100 text-left text-slate-600">
             <tr>

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { findProductByCode, searchProducts, type ProductSearchResult } from "@/lib/actions/sales-vouchers";
-import { SearchDialog, openOnF8 } from "@/components/SearchDialog";
+import { SearchButton, SearchDialog, openOnF8 } from "@/components/SearchDialog";
 
 /**
  * 伝票明細の「商品コード」欄。旧システムと同じく、コードを入力してEnter（または欄を移動）すると
@@ -45,27 +45,30 @@ export function ProductCodeInput({
 
   return (
     <>
-      <input
-        value={code}
-        onChange={(e) => {
-          dirty.current = true;
-          setNotFound(false);
-          onCodeChange(e.target.value);
-        }}
-        onBlur={resolve}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            // フォーム送信を防ぎ、その場でコードを確定する
-            e.preventDefault();
-            void resolve();
-            return;
-          }
-          openOnF8(() => setDialogOpen(true))(e);
-        }}
-        placeholder="F8キーで検索"
-        aria-label="商品コード"
-        className={`input font-mono ${notFound ? "border-red-400" : ""}`}
-      />
+      <div className="flex gap-1">
+        <input
+          value={code}
+          onChange={(e) => {
+            dirty.current = true;
+            setNotFound(false);
+            onCodeChange(e.target.value);
+          }}
+          onBlur={resolve}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              // フォーム送信を防ぎ、その場でコードを確定する
+              e.preventDefault();
+              void resolve();
+              return;
+            }
+            openOnF8(() => setDialogOpen(true))(e);
+          }}
+          placeholder="F8キーで検索"
+          aria-label="商品コード"
+          className={`input min-w-0 flex-1 font-mono ${notFound ? "border-red-400" : ""}`}
+        />
+        <SearchButton onClick={() => setDialogOpen(true)} label="商品検索" />
+      </div>
       {notFound && <span className="mt-1 block text-xs text-red-600">該当する商品なし</span>}
       <SearchDialog
         open={dialogOpen}

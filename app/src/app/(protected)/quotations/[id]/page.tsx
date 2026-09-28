@@ -24,7 +24,7 @@ export default async function QuotationDetailPage({
 
   return (
     <div className="max-w-4xl">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-bold text-slate-800">
           見積書 {quotation.voucher_no}
           {quotation.is_hierarchical && (
@@ -33,7 +33,7 @@ export default async function QuotationDetailPage({
             </span>
           )}
         </h1>
-        <div className="flex items-start gap-2">
+        <div className="flex flex-wrap items-start gap-2">
           <Link
             href={`/quotations/${id}/edit`}
             className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
@@ -66,7 +66,7 @@ export default async function QuotationDetailPage({
           <dt className="text-slate-500">相手先担当</dt>
           <dd className="text-slate-800">{quotation.counterpart_staff || "-"}</dd>
           <dt className="text-slate-500">案件名</dt>
-          <dd className="col-span-3 text-slate-800">
+          <dd className="text-slate-800 sm:col-span-3">
             {quotation.project_name1 || "-"}
             {quotation.project_name2 ? ` / ${quotation.project_name2}` : ""}
           </dd>
@@ -85,7 +85,7 @@ export default async function QuotationDetailPage({
             {quotation.reference_no || "-"} / {quotation.sub_no || "-"}
           </dd>
           <dt className="text-slate-500">備考</dt>
-          <dd className="col-span-3 text-slate-800">{quotation.remarks || "-"}</dd>
+          <dd className="text-slate-800 sm:col-span-3">{quotation.remarks || "-"}</dd>
         </dl>
       </section>
 

@@ -8,7 +8,7 @@ import {
   type QuotationInput,
 } from "@/lib/actions/quotations";
 import { searchProducts, type ProductSearchResult } from "@/lib/actions/sales-vouchers";
-import { SearchDialog, openOnF8 } from "@/components/SearchDialog";
+import { SearchButton, SearchDialog, openOnF8 } from "@/components/SearchDialog";
 import { ProductCodeInput } from "@/components/ProductCodeInput";
 import { HANDWRITE_PRODUCT_CODE } from "@/lib/product-codes";
 
@@ -184,14 +184,17 @@ export function QuotationForm({
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-slate-600">得意先（F8で検索）</span>
-            <input
-              value={customerCode}
-              onChange={(e) => handleCustomerChange(e.target.value)}
-              onKeyDown={openOnF8(() => setCustomerDialogOpen(true))}
-              placeholder="コード入力 or F8で検索"
-              required
-              className="input"
-            />
+            <div className="flex gap-1">
+              <input
+                value={customerCode}
+                onChange={(e) => handleCustomerChange(e.target.value)}
+                onKeyDown={openOnF8(() => setCustomerDialogOpen(true))}
+                placeholder="コード入力 or F8で検索"
+                required
+                className="input min-w-0 flex-1"
+              />
+              <SearchButton onClick={() => setCustomerDialogOpen(true)} />
+            </div>
             <span className="mt-1 block truncate text-xs text-slate-500">
               {customerCode ? (selectedCustomer ? selectedCustomer.name1 : "該当する得意先が見つかりません") : ""}
             </span>
@@ -495,17 +498,20 @@ function LineRow({
           />
         ) : (
           <>
-            <input
-              value={query}
-              onChange={(e) => handleQueryChange(e.target.value)}
-              onFocus={() => results.length > 0 && setOpen(true)}
-              onBlur={() => setTimeout(() => setOpen(false), 150)}
-              onKeyDown={openOnF8(() => setDialogOpen(true))}
-              placeholder={
-                line.product_code === HANDWRITE_PRODUCT_CODE ? "品名を入力" : "品名 or コードで検索（F8で検索ダイアログ）"
-              }
-              className="input"
-            />
+            <div className="flex gap-1">
+              <input
+                value={query}
+                onChange={(e) => handleQueryChange(e.target.value)}
+                onFocus={() => results.length > 0 && setOpen(true)}
+                onBlur={() => setTimeout(() => setOpen(false), 150)}
+                onKeyDown={openOnF8(() => setDialogOpen(true))}
+                placeholder={
+                  line.product_code === HANDWRITE_PRODUCT_CODE ? "品名を入力" : "品名 or コードで検索（F8で検索ダイアログ）"
+                }
+                className="input min-w-0 flex-1"
+              />
+              <SearchButton onClick={() => setDialogOpen(true)} />
+            </div>
             {open && (
               <ul className="absolute z-10 mt-1 max-h-56 w-80 overflow-y-auto rounded border border-slate-200 bg-white shadow-lg">
                 {results.map((p) => (

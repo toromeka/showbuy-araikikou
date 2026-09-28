@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Pagination } from "@/components/Pagination";
 import { prisma } from "@/lib/prisma";
 
 const PAGE_SIZE = 30;
@@ -31,7 +32,7 @@ export default async function PaymentClosingsPage({
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-bold text-slate-800">仕入支払更新（{total.toLocaleString()}件）</h1>
         <Link
           href="/payment-closings/new"
@@ -45,7 +46,7 @@ export default async function PaymentClosingsPage({
         仕入支払更新は、未払の仕入伝票と支払・前回残高をもとに仕入先ごとの支払額を確定させる処理です。実行すると対象の仕入伝票が「支払更新済み」になります。
       </p>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-100 text-left text-slate-600">
             <tr>
@@ -94,21 +95,7 @@ export default async function PaymentClosingsPage({
         </table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="mt-4 flex gap-2 text-sm">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <Link
-              key={p}
-              href={`/payment-closings?page=${p}`}
-              className={`rounded px-3 py-1 ${
-                p === currentPage ? "bg-blue-600 text-white" : "bg-white text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              {p}
-            </Link>
-          ))}
-        </div>
-      )}
+      <Pagination currentPage={currentPage} totalPages={totalPages} href={(p) => `/payment-closings?page=${p}`} />
     </div>
   );
 }

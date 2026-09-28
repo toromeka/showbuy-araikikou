@@ -12,11 +12,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* 画面は明るい配色だけで作っているため、端末がダークモードでも明るい配色のまま表示する
+   （ダークモードに合わせると、白い枠の上の文字が薄い色になって読めなくなるため） */
+:root {
+  color-scheme: light;
 }
 
 body {
@@ -28,5 +27,35 @@ body {
 @layer components {
   .input {
     @apply w-full rounded border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-blue-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400;
+  }
+}
+
+/* ---- スマホ・タブレット（幅768px未満）向けの調整 ---- */
+@media (max-width: 767px) {
+  /* iPhoneのSafariは、文字が16px未満の入力欄を触ると画面を拡大してしまうため、入力欄は16pxにする */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  /* 表は文字を折り返さず、表を囲む枠の中で横にスクロールさせる（画面全体は横にはみ出さない） */
+  table th,
+  table td {
+    white-space: nowrap;
+  }
+  section:has(> table),
+  div:has(> table) {
+    overflow-x: auto;
+  }
+}
+
+/* 表の列の間に余白の無い表（詳細画面の明細など）は、スマホでは文字どうしがくっつくため、列の右側に余白を足す。
+   base の層に置くので、列ごとに余白を指定している表（px-4 など）はそちらが優先される */
+@layer base {
+  @media (max-width: 767px) {
+    th:not(:last-child),
+    td:not(:last-child) {
+      padding-right: 0.75rem;
+    }
   }
 }

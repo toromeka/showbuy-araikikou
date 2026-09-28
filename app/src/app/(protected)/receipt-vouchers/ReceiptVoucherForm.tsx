@@ -7,7 +7,7 @@ import {
   updateReceiptVoucher,
   type ReceiptVoucherInput,
 } from "@/lib/actions/receipt-vouchers";
-import { SearchDialog, openOnF8 } from "@/components/SearchDialog";
+import { SearchButton, SearchDialog, openOnF8 } from "@/components/SearchDialog";
 import { ClosingNotice } from "@/components/ClosingNotice";
 
 type CustomerOption = { code: string; name1: string };
@@ -138,14 +138,17 @@ export function ReceiptVoucherForm({
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-slate-600">得意先（F8で検索）</span>
-            <input
-              value={customerCode}
-              onChange={(e) => setCustomerCode(e.target.value)}
-              onKeyDown={openOnF8(() => setCustomerDialogOpen(true))}
-              placeholder="コード入力 or F8で検索"
-              required
-              className="input"
-            />
+            <div className="flex gap-1">
+              <input
+                value={customerCode}
+                onChange={(e) => setCustomerCode(e.target.value)}
+                onKeyDown={openOnF8(() => setCustomerDialogOpen(true))}
+                placeholder="コード入力 or F8で検索"
+                required
+                className="input min-w-0 flex-1"
+              />
+              <SearchButton onClick={() => setCustomerDialogOpen(true)} />
+            </div>
             <span className="mt-1 block truncate text-xs text-slate-500">
               {customerCode ? (selectedCustomer ? selectedCustomer.name1 : "該当する得意先が見つかりません") : ""}
             </span>

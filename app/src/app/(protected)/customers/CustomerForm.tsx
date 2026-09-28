@@ -62,7 +62,7 @@ export function CustomerForm({
     <form action={formAction} className="max-w-3xl space-y-6">
       <section className="rounded-lg border border-slate-200 bg-white p-6">
         <h2 className="mb-4 text-sm font-bold text-slate-600">基本情報</h2>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="得意先コード" error={state.errors?.code}>
             <input
               name="code"
@@ -92,7 +92,7 @@ export function CustomerForm({
 
       <section className="rounded-lg border border-slate-200 bg-white p-6">
         <h2 className="mb-4 text-sm font-bold text-slate-600">連絡先</h2>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="郵便番号">
             <input name="postal_code" defaultValue={defaults?.postal_code ?? ""} className="input" />
           </Field>
@@ -117,7 +117,7 @@ export function CustomerForm({
 
       <section className="rounded-lg border border-slate-200 bg-white p-6">
         <h2 className="mb-4 text-sm font-bold text-slate-600">担当・請求・締め</h2>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="担当者">
             <select name="staff_code" defaultValue={defaults?.staff_code ?? ""} className="input">
               <option value="">（未設定）</option>
@@ -177,7 +177,7 @@ export function CustomerForm({
 
       <section className="rounded-lg border border-slate-200 bg-white p-6">
         <h2 className="mb-4 text-sm font-bold text-slate-600">分類・単価・計算方式</h2>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="分類区分1">
             <select name="category1_code" defaultValue={defaults?.category1_code ?? ""} className="input">
               <option value="">（未設定）</option>

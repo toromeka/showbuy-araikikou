@@ -19,7 +19,7 @@ export function CompanySettingsForm({ defaults }: { defaults: Defaults }) {
   return (
     <form action={formAction} className="max-w-2xl space-y-6">
       <section className="rounded-lg border border-slate-200 bg-white p-6">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="会社名" error={state.errors?.company_name} note="例: 有限会社荒井機工（「有限会社」は小さく、社名は字間を空けて印刷されます）">
             <input name="company_name" defaultValue={defaults.company_name} required className="input" />
           </Field>

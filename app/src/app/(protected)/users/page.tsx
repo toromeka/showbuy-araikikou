@@ -17,7 +17,7 @@ export default async function UsersPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-bold text-slate-800">ユーザー管理（{users.length}件）</h1>
         <Link href="/users/new" className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
           + ユーザーを追加
@@ -27,7 +27,7 @@ export default async function UsersPage() {
         システムにログインするアカウントの一覧です。使わなくなったアカウントは「無効化」してください（伝票の登録者の記録は残ります）。
       </p>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-100 text-left text-slate-600">
             <tr>

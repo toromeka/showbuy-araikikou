@@ -172,3 +172,24 @@ export function openOnF8(open: () => void) {
     }
   };
 }
+
+/**
+ * 入力欄の横に置く「検索」ボタン。F8キーと同じ検索ダイアログを開く。
+ * スマホ・タブレットにはF8キーが無いため、ボタンでも開けるようにしている（パソコンでもマウスで使える）。
+ */
+export function SearchButton({ onClick, label = "検索" }: { onClick: () => void; label?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={`${label}（F8）`}
+      aria-label={label}
+      className="flex shrink-0 items-center justify-center rounded border border-slate-300 bg-white px-2.5 text-slate-500 hover:bg-slate-50 hover:text-blue-600 active:bg-slate-100"
+    >
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden>
+        <circle cx="8.5" cy="8.5" r="5.5" />
+        <path d="M13 13l4.5 4.5" strokeLinecap="round" />
+      </svg>
+    </button>
+  );
+}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Pagination } from "@/components/Pagination";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -43,7 +44,7 @@ export default async function QuotationsPage({
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-bold text-slate-800">見積書（{total.toLocaleString()}件）</h1>
         <Link
           href="/quotations/new"
@@ -71,7 +72,7 @@ export default async function QuotationsPage({
         </button>
       </form>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-100 text-left text-slate-600">
             <tr>
@@ -117,21 +118,7 @@ export default async function QuotationsPage({
         </table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="mt-4 flex gap-2 text-sm">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <Link
-              key={p}
-              href={`/quotations?q=${encodeURIComponent(q)}&from=${from}&to=${to}&page=${p}`}
-              className={`rounded px-3 py-1 ${
-                p === currentPage ? "bg-blue-600 text-white" : "bg-white text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              {p}
-            </Link>
-          ))}
-        </div>
-      )}
+      <Pagination currentPage={currentPage} totalPages={totalPages} href={(p) => `/quotations?q=${encodeURIComponent(q)}&from=${from}&to=${to}&page=${p}`} />
     </div>
   );
 }

@@ -9,7 +9,7 @@ import {
   type PurchaseProductSearchResult,
   type PurchaseVoucherInput,
 } from "@/lib/actions/purchase-vouchers";
-import { SearchDialog, openOnF8 } from "@/components/SearchDialog";
+import { SearchButton, SearchDialog, openOnF8 } from "@/components/SearchDialog";
 import { ClosingNotice } from "@/components/ClosingNotice";
 import { ProductCodeInput } from "@/components/ProductCodeInput";
 import { HANDWRITE_PRODUCT_CODE } from "@/lib/product-codes";
@@ -165,14 +165,17 @@ export function PurchaseVoucherForm({
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-slate-600">仕入先（F8で検索）</span>
-            <input
-              value={supplierCode}
-              onChange={(e) => handleSupplierChange(e.target.value)}
-              onKeyDown={openOnF8(() => setSupplierDialogOpen(true))}
-              placeholder="コード入力 or F8で検索"
-              required
-              className="input"
-            />
+            <div className="flex gap-1">
+              <input
+                value={supplierCode}
+                onChange={(e) => handleSupplierChange(e.target.value)}
+                onKeyDown={openOnF8(() => setSupplierDialogOpen(true))}
+                placeholder="コード入力 or F8で検索"
+                required
+                className="input min-w-0 flex-1"
+              />
+              <SearchButton onClick={() => setSupplierDialogOpen(true)} />
+            </div>
             <span className="mt-1 block truncate text-xs text-slate-500">
               {supplierCode ? (selectedSupplier ? selectedSupplier.name1 : "該当する仕入先が見つかりません") : ""}
             </span>
@@ -362,17 +365,20 @@ function LineRow({
         />
       </td>
       <td className="relative py-1 pr-2">
-        <input
-          value={query}
-          onChange={(e) => handleQueryChange(e.target.value)}
-          onFocus={() => results.length > 0 && setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
-          onKeyDown={openOnF8(() => setDialogOpen(true))}
-          placeholder={
-            line.product_code === HANDWRITE_PRODUCT_CODE ? "品名を入力" : "商品名 or コードで検索（F8で検索ダイアログ）"
-          }
-          className="input"
-        />
+        <div className="flex gap-1">
+          <input
+            value={query}
+            onChange={(e) => handleQueryChange(e.target.value)}
+            onFocus={() => results.length > 0 && setOpen(true)}
+            onBlur={() => setTimeout(() => setOpen(false), 150)}
+            onKeyDown={openOnF8(() => setDialogOpen(true))}
+            placeholder={
+              line.product_code === HANDWRITE_PRODUCT_CODE ? "品名を入力" : "商品名 or コードで検索（F8で検索ダイアログ）"
+            }
+            className="input min-w-0 flex-1"
+          />
+          <SearchButton onClick={() => setDialogOpen(true)} />
+        </div>
         {open && (
           <ul className="absolute z-10 mt-1 max-h-56 w-80 overflow-y-auto rounded border border-slate-200 bg-white shadow-lg">
             {results.map((p) => (

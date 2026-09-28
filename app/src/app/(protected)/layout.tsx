@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MobileNav } from "./_components/MobileNav";
 import { signOut } from "@/auth";
 import { getCurrentUser, isAdmin } from "@/lib/current-user";
 
@@ -20,6 +21,11 @@ const NAV_ITEMS = [
   { href: "/print-jobs", label: "印刷状況" },
 ];
 
+async function logout() {
+  "use server";
+  await signOut({ redirectTo: "/login" });
+}
+
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   // ログイン時の情報ではなくDBの最新の状態を見る（無効化・権限変更をすぐ反映するため）
   const user = await getCurrentUser();
@@ -35,41 +41,37 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
-        <div className="flex items-center gap-8">
-          <span className="text-base font-bold text-slate-800">荒井機工 販売管理システム</span>
-          <nav className="flex flex-wrap gap-5">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="text-sm text-slate-600 hover:text-blue-600"
-              >
-                {item.label}
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white md:static">
+        {/* パソコン（幅768px以上） */}
+        <div className="hidden items-center justify-between gap-6 px-6 py-3 md:flex">
+          <div className="flex items-center gap-8">
+            <span className="shrink-0 text-base font-bold text-slate-800">荒井機工 販売管理システム</span>
+            <nav className="flex flex-wrap gap-x-5 gap-y-1">
+              {navItems.map((item) => (
+                <Link key={item.href} href={item.href} className="text-sm text-slate-600 hover:text-blue-600">
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+          <div className="flex shrink-0 items-center gap-4">
+            <span className="text-sm text-slate-500">{user?.name} さん</span>
+            {user && (
+              <Link href="/account/password" className="text-sm text-slate-500 hover:text-blue-600">
+                パスワード変更
               </Link>
-            ))}
-          </nav>
+            )}
+            <form action={logout}>
+              <button type="submit" className="text-sm text-slate-500 hover:text-red-600">
+                ログアウト
+              </button>
+            </form>
+          </div>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-slate-500">{user?.name} さん</span>
-          {user && (
-            <Link href="/account/password" className="text-sm text-slate-500 hover:text-blue-600">
-              パスワード変更
-            </Link>
-          )}
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/login" });
-            }}
-          >
-            <button type="submit" className="text-sm text-slate-500 hover:text-red-600">
-              ログアウト
-            </button>
-          </form>
-        </div>
+        {/* スマホ・タブレット（幅768px未満） */}
+        <MobileNav items={navItems} userName={user?.name} logout={logout} />
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-8">
         {user ? (
           children
         ) : (

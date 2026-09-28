@@ -40,7 +40,7 @@ export default async function BillingClosingDetailPage({
 
   return (
     <div className="max-w-5xl">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-bold text-slate-800">
           請求更新 {closing.executed_at.toISOString().slice(0, 16).replace("T", " ")}
           {closing.is_reversed && (
@@ -49,7 +49,7 @@ export default async function BillingClosingDetailPage({
             </span>
           )}
         </h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {!closing.is_reversed && <ReverseButton id={id} />}
           <Link
             href="/billing-closings"
