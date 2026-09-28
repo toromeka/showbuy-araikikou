@@ -22,7 +22,7 @@ export default async function ReceiptVoucherDetailPage({
 
   return (
     <div className="max-w-4xl">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-bold text-slate-800">
           入金伝票 {voucher.voucher_no}
           {voucher.print_receipt && (
@@ -31,7 +31,7 @@ export default async function ReceiptVoucherDetailPage({
             </span>
           )}
         </h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link
             href={`/receipt-vouchers/${id}/edit`}
             className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"

@@ -22,7 +22,7 @@ export function UserForm({
   return (
     <form action={formAction} className="max-w-2xl space-y-6">
       <section className="rounded-lg border border-slate-200 bg-white p-6">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="ログインID" error={state.errors?.login_id}>
             <input
               name="login_id"

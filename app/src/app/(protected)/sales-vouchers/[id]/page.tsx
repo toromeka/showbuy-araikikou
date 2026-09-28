@@ -24,7 +24,7 @@ export default async function SalesVoucherDetailPage({
 
   return (
     <div className="max-w-4xl">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-bold text-slate-800">
           売上伝票 {voucher.voucher_no}
           {voucher.is_cash_sale && (
@@ -38,7 +38,7 @@ export default async function SalesVoucherDetailPage({
             </span>
           )}
         </h1>
-        <div className="flex items-start gap-2">
+        <div className="flex flex-wrap items-start gap-2">
           {!voucher.is_billed && (
             <>
               <Link
@@ -73,7 +73,7 @@ export default async function SalesVoucherDetailPage({
           <dt className="text-slate-500">消費税率</dt>
           <dd className="text-slate-800">{voucher.tax_rate.toString()}%</dd>
           <dt className="text-slate-500">摘要</dt>
-          <dd className="col-span-3 text-slate-800">{voucher.remarks || "-"}</dd>
+          <dd className="text-slate-800 sm:col-span-3">{voucher.remarks || "-"}</dd>
         </dl>
       </section>
 

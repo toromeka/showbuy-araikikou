@@ -18,7 +18,7 @@ export function PasswordForm({
 
   return (
     <form action={formAction} className="max-w-2xl space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {askCurrent && (
           <div className="col-span-2 sm:col-span-1">
             <Field label="今のパスワード" error={state.errors?.current_password}>

@@ -23,13 +23,17 @@ export default async function EditCustomerPage({
   if (!customer) notFound();
 
   const updateWithCode = updateCustomer.bind(null, code);
+  // 小数（Decimal）の項目は、そのままでは画面側（クライアント）に渡せないため、
+  // 掛率は文字列にし、画面で使わない稼動時残高は渡さない
+  const { opening_balance, ...customerFields } = customer;
+  void opening_balance;
 
   return (
     <div>
       <h1 className="mb-6 text-lg font-bold text-slate-800">得意先マスタ - {customer.name1} の編集</h1>
       <CustomerForm
         action={updateWithCode}
-        defaults={customer}
+        defaults={{ ...customerFields, markup_rate: customer.markup_rate?.toString() ?? null }}
         staffOptions={staffOptions}
         regionOptions={regionOptions}
         category1Options={category1Options}

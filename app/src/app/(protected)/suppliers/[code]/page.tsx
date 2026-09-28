@@ -18,11 +18,15 @@ export default async function EditSupplierPage({
   if (!supplier) notFound();
 
   const updateWithCode = updateSupplier.bind(null, code);
+  // 小数（Decimal）の項目は、そのままでは画面側（クライアント）に渡せないため、画面で使わない稼動時残高は渡さない
+  const { opening_balance, ...supplierFields } = supplier;
+  void opening_balance;
+
 
   return (
     <div>
       <h1 className="mb-6 text-lg font-bold text-slate-800">仕入先マスタ - {supplier.name1} の編集</h1>
-      <SupplierForm action={updateWithCode} defaults={supplier} staffOptions={staffOptions} isEdit />
+      <SupplierForm action={updateWithCode} defaults={supplierFields} staffOptions={staffOptions} isEdit />
     </div>
   );
 }

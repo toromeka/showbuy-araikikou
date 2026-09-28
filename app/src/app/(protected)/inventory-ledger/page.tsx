@@ -150,7 +150,7 @@ export default async function InventoryLedgerPage({
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-bold text-slate-800">商品受払台帳</h1>
         <Link href="/inventory-ledger" className="text-sm text-blue-600 hover:underline">
           商品を変更
@@ -189,7 +189,7 @@ export default async function InventoryLedgerPage({
         </button>
       </form>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[920px] text-sm">
             <thead className="bg-slate-100 text-left text-slate-600">

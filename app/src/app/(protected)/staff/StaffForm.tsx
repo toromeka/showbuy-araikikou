@@ -28,7 +28,7 @@ export function StaffForm({
   return (
     <form action={formAction} className="max-w-2xl space-y-6">
       <section className="rounded-lg border border-slate-200 bg-white p-6">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="担当者コード" error={state.errors?.code}>
             <input name="code" defaultValue={defaults?.code} disabled={isEdit} required className="input" />
           </Field>

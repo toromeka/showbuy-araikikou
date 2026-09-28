@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Pagination } from "@/components/Pagination";
 import { prisma } from "@/lib/prisma";
 import { toggleSupplierActive } from "@/lib/actions/suppliers";
 
@@ -36,9 +37,9 @@ export default async function SuppliersPage({
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-bold text-slate-800">仕入先マスタ（{total.toLocaleString()}件）</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link
             href="/suppliers/import"
             className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
@@ -64,7 +65,7 @@ export default async function SuppliersPage({
         />
       </form>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-100 text-left text-slate-600">
             <tr>
@@ -119,21 +120,7 @@ export default async function SuppliersPage({
         </table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="mt-4 flex gap-2 text-sm">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <Link
-              key={p}
-              href={`/suppliers?q=${encodeURIComponent(q)}&page=${p}`}
-              className={`rounded px-3 py-1 ${
-                p === currentPage ? "bg-blue-600 text-white" : "bg-white text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              {p}
-            </Link>
-          ))}
-        </div>
-      )}
+      <Pagination currentPage={currentPage} totalPages={totalPages} href={(p) => `/suppliers?q=${encodeURIComponent(q)}&page=${p}`} />
     </div>
   );
 }
