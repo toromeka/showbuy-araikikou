@@ -1,10 +1,12 @@
 // 伝票検索の動作確認。
-// - 種類のチェック・得意先（名前の一部）・商品名で探せ、伝票ごと・明細ごとの表示を切り替えられる
+// - 種類のチェック・得意先（名前の一部）・商品名で探せる。表示モードの既定は明細モードで、
+//   検索した後に伝票モードに切り替えると、すぐに表示し直される
+// - 見出しを押すと並べ替えられる（商品名はふりがな順、もう一度押すと逆順）
+// - 行を押すと、その伝票の内容が重ねて表示され、「閉じる」で検索結果に戻り、「詳細画面を開く」で伝票の画面に移れる
 // - 商品名は全角カナ・ひらがな・半角カナのどれで入力しても同じ結果になる
 // - 得意先コードは先頭の0を省いても（54 → 0054）探せる
 // - 商品名で探すときは、入金・支払伝票は対象外である旨が出る
 // - CSVファイルで出力できる（Excelで開けるBOM付きUTF-8）
-// - 結果の伝票番号から伝票の詳細画面に移れる
 // 得意先 0054（竹田栄鉄工）の売上伝票に、商品名に「ｺｰﾄ」を含む明細があること（移行済みの実データ）。
 // 事前に `npm run dev` でアプリを起動しておいてください。
 //   node scripts/smoke_voucher_search.mjs
@@ -43,7 +45,14 @@ try {
   await page.waitForSelector("text=検索結果", { timeout: 15000 });
   const full = await count();
   log("search by partner name and product (full-width kana)", full > 0, `${full}件`);
-  log("only sales vouchers shown", !(await text()).includes("仕入伝票 ") || (await page.locator("tbody >> text=仕入伝票").count()) === 0);
+  log("only sales vouchers shown", (await page.locator("tbody >> text=仕入伝票").count()) === 0);
+  log("default view is line mode", (await page.locator("th >> text=商品名（ふりがな順）").count()) === 1);
+
+  // 1-2. 検索した後に伝票モードへ切り替えると、すぐに表示し直される
+  await page.click('label:has-text("伝票モード")');
+  await page.waitForURL(/view=voucher/, { timeout: 8000 });
+  await page.waitForSelector("text=検索結果");
+  log("switching to voucher mode re-renders at once", (await count()) === full && (await page.locator("th >> text=明細").count()) === 1);
 
   // 2. 表記ゆれ・コードの0省略
   await page.goto(`${BASE_URL}/voucher-search?type=sales&partner=${encodeURIComponent("竹田")}&product=${encodeURIComponent("こーと")}`);
@@ -54,10 +63,25 @@ try {
   const half = await count();
   log("hiragana / half-width kana / unpadded code give the same result", hira === full && half === full, `全角${full} ひらがな${hira} 半角+コード54 ${half}`);
 
-  // 3. 明細ごとの表示
-  await page.goto(`${BASE_URL}/voucher-search?type=sales&partner=0054&product=${encodeURIComponent("コート")}&view=line`);
+  // 3. 明細モードの表示と並べ替え
+  await page.goto(`${BASE_URL}/voucher-search?type=sales&type=purchase&partner=0054`);
   await page.waitForSelector("text=検索結果");
-  log("line view shows matching lines", /明細 [0-9,]+行/.test(await text()) && (await page.locator("tbody tr").count()) >= full);
+  log("line view shows lines", /明細 [0-9,]+行/.test(await text()) && (await page.locator("tbody tr").count()) > 0);
+  const dates = await page.locator("tbody tr td:nth-child(3)").allTextContents();
+  log("default order is newest date first", dates.join() === [...dates].sort().reverse().join());
+  await page.click('th button:has-text("商品名")');
+  const names1 = await page.locator("tbody tr td:nth-child(5)").allTextContents();
+  await page.click('th button:has-text("商品名")');
+  const names2 = await page.locator("tbody tr td:nth-child(5)").allTextContents();
+  log("sort by product name toggles ascending / descending", names1.length > 1 && names1.join() === [...names2].reverse().join() && names1.join() !== names2.join());
+
+  // 3-2. 行を押すと伝票の内容が重ねて表示される
+  const firstNo = (await page.locator("tbody tr td:nth-child(2)").first().textContent()).trim();
+  await page.locator("tbody tr").first().click();
+  await page.waitForSelector('[role="dialog"]', { timeout: 8000 });
+  log("clicking a line opens the voucher", (await page.locator('[role="dialog"]').textContent()).includes(firstNo), firstNo);
+  await page.click('[role="dialog"] button:has-text("閉じる")');
+  log("close returns to the results", (await page.locator('[role="dialog"]').count()) === 0 && (await page.locator("tbody tr").count()) > 0);
 
   // 4. 商品名で探すときは入金・支払伝票は対象外
   await page.goto(`${BASE_URL}/voucher-search?type=sales&type=receipt&partner=0054&product=${encodeURIComponent("コート")}`);
@@ -67,18 +91,19 @@ try {
   // 5. CSV
   await page.goto(`${BASE_URL}/voucher-search`);
   await page.fill('input[name="partner"]', "0054");
-  await page.check('input[name="view"][value="csv"]');
+  await page.check('input[name="out"][value="csv"]');
   const [download] = await Promise.all([page.waitForEvent("download"), page.click('button:has-text("検索")')]);
   const buf = fs.readFileSync(await download.path());
   const csv = buf.toString("utf8");
   log("CSV downloaded with BOM and header", buf[0] === 0xef && csv.includes("種類,伝票番号,伝票日付") && csv.includes("竹田栄鉄工"), download.suggestedFilename());
 
-  // 6. 結果から詳細画面へ
-  await page.goto(`${BASE_URL}/voucher-search?type=sales&partner=0054`);
+  // 6. 重ねて表示した伝票から詳細画面へ
+  await page.goto(`${BASE_URL}/voucher-search?type=sales&partner=0054&view=voucher`);
   await page.waitForSelector("text=検索結果");
-  await page.locator('tbody a[href^="/sales-vouchers/"]').first().click();
+  await page.locator("tbody tr").first().click();
+  await page.click('[role="dialog"] a:has-text("詳細画面を開く")');
   await page.waitForURL(/\/sales-vouchers\/\d+$/, { timeout: 8000 });
-  log("voucher number links to the detail page", true);
+  log("open detail page from the voucher panel", true);
 } catch (e) {
   log("exception", false, String(e));
 } finally {
