@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { workColorFor } from "@/lib/work-colors";
 
 type NavItem = { href: string; label: string };
 
@@ -48,6 +49,8 @@ export function MobileNav({
                 key={item.href}
                 href={item.href}
                 onClick={close}
+                // 作業ごとの背景色と同じ色を付けて、色と作業の対応を覚えやすくする
+                style={workColorFor(item.href) && !isCurrent(item.href) ? { backgroundColor: workColorFor(item.href)! } : undefined}
                 className={`rounded border px-3 py-3 text-sm ${
                   isCurrent(item.href)
                     ? "border-blue-600 bg-blue-50 font-semibold text-blue-700"

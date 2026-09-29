@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { MobileNav } from "./_components/MobileNav";
+import { WorkBackground } from "./_components/WorkBackground";
+import { workColorFor } from "@/lib/work-colors";
 import { signOut } from "@/auth";
 import { getCurrentUser, isAdmin } from "@/lib/current-user";
 
@@ -40,7 +42,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     : NAV_ITEMS;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <WorkBackground>
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white md:static">
         {/* パソコン（幅768px以上） */}
         <div className="hidden items-center justify-between gap-6 px-6 py-3 md:flex">
@@ -48,7 +50,14 @@ export default async function ProtectedLayout({ children }: { children: React.Re
             <span className="shrink-0 text-base font-bold text-slate-800">荒井機工 販売管理システム</span>
             <nav className="flex flex-wrap gap-x-5 gap-y-1">
               {navItems.map((item) => (
-                <Link key={item.href} href={item.href} className="text-sm text-slate-600 hover:text-blue-600">
+                <Link key={item.href} href={item.href} className="flex items-center gap-1 text-sm text-slate-600 hover:text-blue-600">
+                  {workColorFor(item.href) && (
+                    <span
+                      aria-hidden
+                      className="inline-block h-2.5 w-2.5 rounded-full border border-slate-300"
+                      style={{ backgroundColor: workColorFor(item.href)! }}
+                    />
+                  )}
                   {item.label}
                 </Link>
               ))}
@@ -80,6 +89,6 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           </p>
         )}
       </main>
-    </div>
+    </WorkBackground>
   );
 }
