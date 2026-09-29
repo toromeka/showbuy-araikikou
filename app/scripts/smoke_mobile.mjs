@@ -25,6 +25,7 @@ const PAGES = [
   "/inventory-ledger",
   "/print-jobs",
   "/daily-import",
+  "/voucher-search?type=sales&type=purchase&partner=0054",
   "/users",
 ];
 const results = [];

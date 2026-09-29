@@ -7,6 +7,7 @@ import { getCurrentUser, isAdmin } from "@/lib/current-user";
 
 const NAV_ITEMS = [
   { href: "/", label: "ホーム" },
+  { href: "/voucher-search", label: "伝票検索" },
   { href: "/sales-vouchers", label: "売上伝票" },
   { href: "/purchase-vouchers", label: "仕入伝票" },
   { href: "/receipt-vouchers", label: "入金伝票" },
