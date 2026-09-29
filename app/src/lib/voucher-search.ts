@@ -34,6 +34,8 @@ export type SearchLine = {
   price: number | null;
   amount: number | null;
   note: string | null;
+  // 並べ替え用の商品のふりがな（商品マスタの「ﾌﾘｶﾞﾅ」。無ければ空）
+  productKana: string;
   // 商品名・規格の条件に当てはまった明細か（明細ごとの表示では、当てはまった明細だけを出す）
   matched: boolean;
 };
@@ -45,7 +47,11 @@ export type SearchRow = {
   date: string;
   partnerCode: string;
   partnerName: string;
+  // 並べ替え用の得意先・仕入先のふりがな（マスタの「ﾌﾘｶﾞﾅ」。無ければ空）
+  partnerKana: string;
   amount: number;
+  tax: number | null;
+  remarks: string | null;
   href: string;
   lines: SearchLine[];
 };
@@ -119,7 +125,7 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
         ...partnerWhere("customer_code", "customers", "name1"),
         ...(lineFilter ? { sales_voucher_lines: { some: lineWhere } } : {}),
       },
-      include: { customers: { select: { name1: true } }, sales_voucher_lines: { orderBy: { line_no: "asc" } } },
+      include: { customers: { select: { name1: true, kana: true } }, sales_voucher_lines: { orderBy: { line_no: "asc" } } },
       orderBy: [{ voucher_date: "desc" }, { voucher_no: "desc" }],
       take,
     });
@@ -132,7 +138,10 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
         date: iso(v.voucher_date),
         partnerCode: v.customer_code,
         partnerName: v.customers.name1,
+        partnerKana: v.customers.kana ?? "",
         amount: Number(v.sales_amount),
+        tax: Number(v.tax_amount),
+        remarks: v.remarks,
         href: `/sales-vouchers/${v.id}`,
         lines: v.sales_voucher_lines.map((l) => ({
           lineNo: l.line_no,
@@ -144,6 +153,7 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
           price: num(l.sale_price),
           amount: num(l.sale_amount),
           note: [l.note, l.note2].filter(Boolean).join(" ") || null,
+          productKana: "",
           matched: lineMatches(l, p),
         })),
       })),
@@ -158,7 +168,7 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
         ...partnerWhere("supplier_code", "suppliers", "name1"),
         ...(lineFilter ? { purchase_voucher_lines: { some: lineWhere } } : {}),
       },
-      include: { suppliers: { select: { name1: true } }, purchase_voucher_lines: { orderBy: { line_no: "asc" } } },
+      include: { suppliers: { select: { name1: true, kana: true } }, purchase_voucher_lines: { orderBy: { line_no: "asc" } } },
       orderBy: [{ voucher_date: "desc" }, { voucher_no: "desc" }],
       take,
     });
@@ -171,7 +181,10 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
         date: iso(v.voucher_date),
         partnerCode: v.supplier_code,
         partnerName: v.suppliers.name1,
+        partnerKana: v.suppliers.kana ?? "",
         amount: Number(v.subtotal_amount),
+        tax: Number(v.tax_amount),
+        remarks: v.remarks,
         href: `/purchase-vouchers/${v.id}`,
         lines: v.purchase_voucher_lines.map((l) => ({
           lineNo: l.line_no,
@@ -183,6 +196,7 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
           price: num(l.cost_price),
           amount: num(l.cost_amount),
           note: l.note,
+          productKana: "",
           matched: lineMatches(l, p),
         })),
       })),
@@ -197,7 +211,7 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
         ...partnerWhere("customer_code", "customers", "name1"),
         ...(lineFilter ? { quotation_lines: { some: lineWhere } } : {}),
       },
-      include: { customers: { select: { name1: true } }, quotation_lines: { orderBy: { line_no: "asc" } } },
+      include: { customers: { select: { name1: true, kana: true } }, quotation_lines: { orderBy: { line_no: "asc" } } },
       orderBy: [{ quotation_date: "desc" }, { voucher_no: "desc" }],
       take,
     });
@@ -210,7 +224,10 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
         date: iso(v.quotation_date),
         partnerCode: v.customer_code,
         partnerName: v.customers.name1,
+        partnerKana: v.customers.kana ?? "",
         amount: Number(v.quote_amount),
+        tax: null,
+        remarks: [v.project_name1, v.project_name2, v.remarks].filter(Boolean).join(" / ") || null,
         href: `/quotations/${v.id}`,
         lines: v.quotation_lines.map((l) => ({
           lineNo: l.line_no,
@@ -222,6 +239,7 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
           price: num(l.quote_price),
           amount: num(l.quote_amount),
           note: null,
+          productKana: "",
           matched: lineMatches(l, p),
         })),
       })),
@@ -238,7 +256,7 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
     if (type === "receipt") {
       const list = await prisma.receipt_vouchers.findMany({
         where: { ...dateRange("voucher_date"), ...noWhere, ...partnerWhere("customer_code", "customers", "name1") },
-        include: { customers: { select: { name1: true } }, receipt_voucher_lines: { orderBy: { line_no: "asc" } } },
+        include: { customers: { select: { name1: true, kana: true } }, receipt_voucher_lines: { orderBy: { line_no: "asc" } } },
         orderBy: [{ voucher_date: "desc" }, { voucher_no: "desc" }],
         take,
       });
@@ -251,7 +269,10 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
           date: iso(v.voucher_date),
           partnerCode: v.customer_code,
           partnerName: v.customers.name1,
+          partnerKana: v.customers.kana ?? "",
           amount: Number(v.subtotal_amount),
+          tax: null,
+          remarks: null,
           href: `/receipt-vouchers/${v.id}`,
           lines: v.receipt_voucher_lines.map((l) => ({
             lineNo: l.line_no,
@@ -263,6 +284,7 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
             price: null,
             amount: num(l.amount),
             note: l.note,
+            productKana: "",
             matched: true,
           })),
         })),
@@ -270,7 +292,7 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
     } else {
       const list = await prisma.payment_vouchers.findMany({
         where: { ...dateRange("voucher_date"), ...noWhere, ...partnerWhere("supplier_code", "suppliers", "name1") },
-        include: { suppliers: { select: { name1: true } }, payment_voucher_lines: { orderBy: { line_no: "asc" } } },
+        include: { suppliers: { select: { name1: true, kana: true } }, payment_voucher_lines: { orderBy: { line_no: "asc" } } },
         orderBy: [{ voucher_date: "desc" }, { voucher_no: "desc" }],
         take,
       });
@@ -283,7 +305,10 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
           date: iso(v.voucher_date),
           partnerCode: v.supplier_code,
           partnerName: v.suppliers.name1,
+          partnerKana: v.suppliers.kana ?? "",
           amount: Number(v.subtotal_amount),
+          tax: null,
+          remarks: null,
           href: `/payment-vouchers/${v.id}`,
           lines: v.payment_voucher_lines.map((l) => ({
             lineNo: l.line_no,
@@ -295,12 +320,25 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
             price: null,
             amount: num(l.amount),
             note: l.note,
+            productKana: "",
             matched: true,
           })),
         })),
       );
     }
   }
+
+  // 並べ替え用に、明細の商品のふりがなを商品マスタから引く
+  const codes = [...new Set(rows.flatMap((r) => r.lines.map((l) => l.productCode).filter((c): c is string => !!c)))];
+  const kanaOf = new Map<string, string>();
+  for (let i = 0; i < codes.length; i += 5000) {
+    const found = await prisma.products.findMany({
+      where: { code: { in: codes.slice(i, i + 5000) }, kana: { not: null } },
+      select: { code: true, kana: true },
+    });
+    for (const f of found) kanaOf.set(f.code, f.kana ?? "");
+  }
+  for (const r of rows) for (const l of r.lines) if (l.productCode) l.productKana = kanaOf.get(l.productCode) ?? "";
 
   // すべての種類をまとめて、日付の新しい順に並べる
   rows.sort((a, b) => (a.date === b.date ? (a.voucherNo < b.voucherNo ? 1 : -1) : a.date < b.date ? 1 : -1));
