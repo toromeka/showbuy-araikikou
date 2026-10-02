@@ -2,6 +2,7 @@
 // - 売上と仕入が混ざったCSVを、区分で売上伝票・仕入伝票に振り分けて取り込める（摘要の行は同じ伝票に入る）
 // - メモ行だけの伝票は、コードが仕入先マスタにだけあれば仕入伝票になる
 // - 取り込んだ売上は未請求、仕入は未払になり、消費税も計算される
+// - 備考（備考1と備考2を半角スペースでつなげたもの）は、備考1・備考2に分けて取り込む
 // - 同じCSVをもう一度取り込むと、すべて「取り込み済み」になり二重に登録されない
 // - 同じ伝票番号で内容が違う伝票は「内容が違う」として取り込まない
 // - 伝票番号が空の行はエラーになり、何も取り込まない
@@ -33,7 +34,8 @@ function writeCsv(name, lines) {
 }
 const rows = (salesAmount) => [
   `2026/09/26,${SALES_NO},摘要,${CUSTOMER},テスト得意先,,日計取込テストの摘要,,0,,0,0,,,,`,
-  `2026/09/26,${SALES_NO},売上,${CUSTOMER},テスト得意先,,日計取込テスト売上品,規格A,2,個,${salesAmount / 2},${salesAmount},,,,`,
+  // 旧システムのCSVの備考は、備考1と備考2を半角スペースでつなげた形
+  `2026/09/26,${SALES_NO},売上,${CUSTOMER},テスト得意先,,日計取込テスト売上品,規格A,2,個,${salesAmount / 2},${salesAmount},日計備考1 日計備考2,,,`,
   `2026/09/26,${PURCHASE_NO},仕入,${SUPPLIER},テスト仕入先,,日計取込テスト仕入品,,3,個,1000,3000,,,,`,
   `2026/09/26,${MEMO_NO},摘要,${SUPPLIER},テスト仕入先,,日計取込テストのメモだけの仕入,,0,,0,0,,,,`,
 ];
@@ -101,6 +103,10 @@ try {
   log(
     "sales voucher: memo row kept, amount and tax, unbilled",
     text.includes("日計取込テストの摘要") && text.includes("日計取込テスト売上品") && text.includes("10,000") && text.includes("1,000") && !text.includes("請求確定済み"),
+  );
+  log(
+    "remarks split into 備考1 and 備考2",
+    (await page.locator("tbody td", { hasText: "日計備考1" }).locator("div", { hasText: "日計備考2" }).count()) === 1,
   );
   await page.goto(`${BASE_URL}/purchase-vouchers?q=${MEMO_NO}`);
   log("memo-only voucher became a purchase voucher", (await page.locator(`tbody a[href^="/purchase-vouchers/"]`).count()) === 1);

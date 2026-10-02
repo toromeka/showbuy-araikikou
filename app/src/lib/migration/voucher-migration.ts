@@ -34,6 +34,8 @@ export type LineInput = {
   price: number | null;
   amount: number;
   note: string | null;
+  // 売上伝票だけ（備考2）。仕入伝票は備考の欄が1つなので常に null
+  note2: string | null;
 };
 
 export type VoucherPlan = {
@@ -176,6 +178,16 @@ export class Problems {
   }
 }
 
+// 旧システムのCSVの「備考」は、売上伝票の備考1と備考2を半角スペース1つでつなげた形で出力されている
+// （例:「3/7特機生 川端様」→ 備考1「3/7特機生」・備考2「川端様」、「 川端様」→ 備考1は空・備考2「川端様」、
+//  「北村様 」→ 備考1「北村様」・備考2は空）。最初の半角スペースで分け、それぞれの前後の空白を除く。
+export function splitSalesNote(raw: string | undefined): { note: string | null; note2: string | null } {
+  const s = raw ?? "";
+  const i = s.indexOf(" ");
+  if (i < 0) return { note: trimOrNull(s), note2: null };
+  return { note: trimOrNull(s.slice(0, i)), note2: trimOrNull(s.slice(i + 1)) };
+}
+
 // ---------------------------------------------------------------------------
 // 売上・仕入（明細単位のCSV）を伝票ごとにまとめる
 // ---------------------------------------------------------------------------
@@ -243,13 +255,14 @@ export function groupVoucherRows(
       quantity: qty,
       price: price ?? null,
       amount: amountRaw ?? 0,
-      note: trimOrNull(r["備考"]),
+      ...(kind === "売上" ? splitSalesNote(r["備考"]) : { note: trimOrNull(r["備考"]), note2: null }),
     };
     for (const [label, v, max] of [
       ["商品名", line.product_name, 80],
       ["規格", line.spec, 80],
       ["単位", line.unit, 10],
       ["備考", line.note, 100],
+      ["備考2", line.note2, 100],
       ["商品コード", line.product_code, 15],
     ] as const) {
       if (v && len(v) > max) problems.error(`${where}(伝票${voucher_no}): ${label}が${max}文字を超えています。`);
@@ -284,9 +297,10 @@ export function groupVoucherRows(
 // ---------------------------------------------------------------------------
 export async function planMigration(files: MigrationFiles): Promise<Plan> {
   const problems = new Problems();
-  const salesRows = parseCsv(files.sales);
-  const purchaseRows = files.purchase ? parseCsv(files.purchase) : [];
-  const receiptRows = files.receipt ? parseCsv(files.receipt) : [];
+  // 前後の空白は各欄を読むときに除く（売上伝票の備考の先頭・末尾の空白で備考1・備考2を分けるため）
+  const salesRows = parseCsv(files.sales, { trim: false });
+  const purchaseRows = files.purchase ? parseCsv(files.purchase, { trim: false }) : [];
+  const receiptRows = files.receipt ? parseCsv(files.receipt, { trim: false }) : [];
 
   const salesGroups = groupVoucherRows("売上", salesRows, problems);
   const purchaseGroups = groupVoucherRows("仕入", purchaseRows, problems);
@@ -821,6 +835,7 @@ export async function insertSalesVouchers(tx: TxClient, plans: VoucherPlan[], us
           gross_profit: l.amount,
           tax_amount: v.line_taxes[i],
           note: l.note,
+          note2: l.note2,
         })),
       ),
     });

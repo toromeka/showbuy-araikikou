@@ -1,5 +1,6 @@
 import { getCurrentUser, isAdmin } from "@/lib/current-user";
 import { MigrationForm } from "./MigrationForm";
+import { NoteRepairForm } from "./NoteRepairForm";
 
 export default async function DataMigrationPage() {
   if (!isAdmin(await getCurrentUser())) {
@@ -20,6 +21,9 @@ export default async function DataMigrationPage() {
         </ul>
       </div>
       <MigrationForm />
+      <div className="mt-10">
+        <NoteRepairForm />
+      </div>
     </div>
   );
 }

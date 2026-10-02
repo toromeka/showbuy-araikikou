@@ -98,10 +98,10 @@ function splitRows(
     const hasPurchase = kinds.includes("仕入");
     if (hasSales && hasPurchase) {
       // 1枚の伝票に売上と仕入の行がある場合は、それぞれの伝票に分ける（メモ行などは、コードが同じ側に入れる）
-      const salesCode = entries.find((e) => SALES_KINDS.has(trimOrNull(e.row["区分"]) ?? ""))!.row["得意先/仕入先コード"];
+      const salesCode = trimOrNull(entries.find((e) => SALES_KINDS.has(trimOrNull(e.row["区分"]) ?? ""))!.row["得意先/仕入先コード"]);
       for (const e of entries) {
         const k = trimOrNull(e.row["区分"]) ?? "";
-        if (k === "仕入" || (!SALES_KINDS.has(k) && e.row["得意先/仕入先コード"] !== salesCode)) add(purchases, e);
+        if (k === "仕入" || (!SALES_KINDS.has(k) && trimOrNull(e.row["得意先/仕入先コード"]) !== salesCode)) add(purchases, e);
         else add(sales, e);
       }
       salesNos.push(Number(no));
@@ -140,7 +140,7 @@ function splitRows(
 
 export async function planDailyImport(csv: string): Promise<Plan> {
   const problems = new Problems();
-  const rows = parseCsv(csv);
+  const rows = parseCsv(csv, { trim: false });
   if (rows.length === 0) problems.error("CSVにデータ行がありませんでした。");
 
   const [customers, suppliers, productRows, staffRows, taxRates] = await Promise.all([
