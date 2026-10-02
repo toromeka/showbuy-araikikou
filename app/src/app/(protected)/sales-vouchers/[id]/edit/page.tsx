@@ -9,7 +9,7 @@ export default async function EditSalesVoucherPage({
 }) {
   const { id } = await params;
 
-  const [voucher, customers, staffOptions, taxRateRows] = await Promise.all([
+  const [voucher, customers, staffRows, taxRateRows] = await Promise.all([
     prisma.sales_vouchers.findUnique({
       where: { id: BigInt(id) },
       include: { sales_voucher_lines: { orderBy: { line_no: "asc" } } },
@@ -19,11 +19,13 @@ export default async function EditSalesVoucherPage({
       orderBy: { code: "asc" },
       select: { code: true, name1: true, staff_code: true, rounding_method: true },
     }),
-    prisma.staff.findMany({ where: { is_active: true }, orderBy: { code: "asc" } }),
+    // 無効にした担当者の伝票も開けるよう、すべての担当者を一覧に入れる（無効な担当者には「（無効）」と付ける）
+    prisma.staff.findMany({ orderBy: { code: "asc" } }),
     prisma.tax_rate_history.findMany({ orderBy: { starts_on: "asc" } }),
   ]);
 
   if (!voucher) notFound();
+  const staffOptions = staffRows.map((s) => ({ code: s.code, name: s.is_active ? s.name : `${s.name}（無効）` }));
   if (voucher.is_billed) {
     return (
       <div>

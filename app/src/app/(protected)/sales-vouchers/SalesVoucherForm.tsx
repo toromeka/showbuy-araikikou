@@ -55,12 +55,15 @@ export function SalesVoucherForm({
   staffOptions,
   taxRates,
   defaults,
+  initialStaffCode,
 }: {
   mode: "create" | "edit";
   voucherId?: string;
   customers: CustomerOption[];
   staffOptions: StaffOption[];
   taxRates: TaxRateRow[];
+  // 新規登録のときの担当者の初期値（ログインしているユーザーに紐付いた担当者）
+  initialStaffCode?: string | null;
   defaults?: {
     customer_code: string;
     voucher_date: string;
@@ -78,7 +81,8 @@ export function SalesVoucherForm({
   const [voucherDate, setVoucherDate] = useState(
     defaults?.voucher_date ?? new Date().toISOString().slice(0, 10),
   );
-  const [staffCode, setStaffCode] = useState(defaults?.staff_code ?? "");
+  const [staffCode, setStaffCode] = useState(defaults?.staff_code ?? initialStaffCode ?? "");
+  const selectedStaff = staffOptions.find((s) => s.code === staffCode.trim());
   const [isCashSale, setIsCashSale] = useState(defaults?.is_cash_sale ?? false);
   const [remarks, setRemarks] = useState(defaults?.remarks ?? "");
   const [lines, setLines] = useState<LineState[]>(defaults?.lines?.length ? defaults.lines : [emptyLine()]);
@@ -144,7 +148,7 @@ export function SalesVoucherForm({
     const input: SalesVoucherInput = {
       customer_code: customerCode,
       voucher_date: voucherDate,
-      staff_code: staffCode || null,
+      staff_code: staffCode.trim() || null,
       is_cash_sale: isCashSale,
       remarks: remarks || null,
       lines: lines.map((l) => ({
@@ -205,15 +209,27 @@ export function SalesVoucherForm({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-600">担当者</span>
-            <select value={staffCode} onChange={(e) => setStaffCode(e.target.value)} className="input">
-              <option value="">（未設定）</option>
+            <span className="mb-1 block text-xs font-medium text-slate-600">担当者コード（一覧から選べます）</span>
+            {/* 新規登録では、ログインしているユーザーに紐付いた担当者が最初から入る（ユーザー管理で設定。変えることもできる） */}
+            <input
+              value={staffCode}
+              onChange={(e) => setStaffCode(e.target.value)}
+              list="sales-voucher-staff"
+              placeholder="担当者コード"
+              autoComplete="off"
+              aria-label="担当者コード"
+              className="input"
+            />
+            <datalist id="sales-voucher-staff">
               {staffOptions.map((s) => (
                 <option key={s.code} value={s.code}>
                   {s.code} - {s.name}
                 </option>
               ))}
-            </select>
+            </datalist>
+            <span className={`mt-1 block truncate text-xs ${staffCode.trim() && !selectedStaff ? "text-red-600" : "text-slate-500"}`}>
+              {staffCode.trim() ? (selectedStaff ? selectedStaff.name : "該当する担当者が見つかりません") : "（未設定）"}
+            </span>
           </label>
           <label className="mt-6 flex items-center gap-2">
             <input
