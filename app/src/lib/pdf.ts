@@ -74,10 +74,11 @@ export function unitPriceStr(n: { toString(): string } | number | null | undefin
   return Number(n).toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// 納品書・見積書に使うフォント。見本の伝票（MSゴシック）と字形・文字幅が互換の等幅フォント「IPAゴシック」
-// （Dockerfileで fonts-ipafont-gothic を導入）を、数字・英字も含めてすべての文字に使う。
-// 等幅なので全角=1文字幅、半角=0.5文字幅となり、文字数から印刷幅を正確に見積もれる（fitText）。
-export const SLIP_FONT = `"IPAGothic", "IPAゴシック", monospace`;
+// 納品書・見積書に使うフォント。見本の伝票（MSゴシック）と同じく文字幅が一定（全角=1文字、半角=0.5文字）の
+// 「BIZ UDゴシック」（モリサワ。Windows 10以降にも入っているフォント。数字の0に斜線が入らない）を、数字・英字も含めて
+// すべての文字に使う（Dockerfileで fonts-morisawa-bizud-gothic を導入）。無い環境ではIPAゴシックで代わりに印刷する。
+// 文字幅が一定なので、文字数から印刷幅を正確に見積もれる（fitText）。
+export const SLIP_FONT = `"BIZ UDGothic", "BIZ UDゴシック", "IPAGothic", "IPAゴシック", monospace`;
 
 const PX_PER_MM = 96 / 25.4;
 

@@ -16,6 +16,7 @@ export type SalesVoucherLineInput = {
   cost_price?: number | null;
   sale_price?: number | null;
   note?: string | null;
+  note2?: string | null;
 };
 
 export type SalesVoucherInput = {
@@ -63,6 +64,7 @@ function computeLines(
       gross_profit: saleAmount - costAmt,
       tax_amount: lineTax,
       note: l.note || null,
+      note2: l.note2 || null,
     };
   });
 

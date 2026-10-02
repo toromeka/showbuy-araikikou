@@ -100,7 +100,10 @@ export default async function SalesVoucherDetailPage({
                 <td className="py-2 text-slate-500">{l.unit}</td>
                 <td className="py-2 text-right">{l.sale_price ? Number(l.sale_price).toLocaleString() : ""}</td>
                 <td className="py-2 text-right">{l.sale_amount ? Number(l.sale_amount).toLocaleString() : ""}</td>
-                <td className="py-2 text-slate-500">{l.note}</td>
+                <td className="py-2 text-slate-500">
+                  {l.note}
+                  {l.note2 && <div>{l.note2}</div>}
+                </td>
               </tr>
             ))}
           </tbody>
