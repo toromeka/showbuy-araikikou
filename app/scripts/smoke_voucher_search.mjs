@@ -6,8 +6,9 @@
 // - 商品名は全角カナ・ひらがな・半角カナのどれで入力しても同じ結果になる
 // - 得意先コードは先頭の0を省いても（54 → 0054）探せる
 // - 商品名で探すときは、入金・支払伝票は対象外である旨が出る
+// - 担当者（コード、または名前）で絞り込める。担当者の無い入金・支払伝票は対象外である旨が出る
 // - CSVファイルで出力できる（Excelで開けるBOM付きUTF-8）
-// 得意先 0054（竹田栄鉄工）の売上伝票に、商品名に「ｺｰﾄ」を含む明細があること（移行済みの実データ）。
+// 得意先 0054（竹田栄鉄工）の売上伝票に、商品名に「ｺｰﾄ」を含む明細があり、担当者コード 5 の売上伝票が2026年9月以降にあること（移行済みの実データ）。
 // 事前に `npm run dev` でアプリを起動しておいてください。
 //   node scripts/smoke_voucher_search.mjs
 
@@ -87,6 +88,21 @@ try {
   await page.goto(`${BASE_URL}/voucher-search?type=sales&type=receipt&partner=0054&product=${encodeURIComponent("コート")}`);
   await page.waitForSelector("text=検索結果");
   log("receipt vouchers excluded when searching by product", (await text()).includes("入金伝票には商品の明細が無いため"));
+
+  // 4-2. 担当者（コード、または名前の一部）で絞り込む。担当者の無い入金伝票は対象外
+  await page.goto(`${BASE_URL}/voucher-search?type=sales&type=receipt&staff=5&from=2026-09-01&view=voucher`);
+  await page.waitForSelector("text=検索結果");
+  const byCode = await count();
+  const staffCells = await page.locator("tbody tr td:nth-child(5)").allTextContents();
+  const staffName = staffCells[0]?.trim();
+  log(
+    "filter by staff code (all rows same staff, receipts excluded)",
+    byCode > 0 && staffCells.every((c) => c.trim() === staffName) && (await text()).includes("入金伝票には担当者が無いため"),
+    `${byCode}件・担当者 ${staffName}`,
+  );
+  await page.goto(`${BASE_URL}/voucher-search?type=sales&staff=${encodeURIComponent(staffName ?? "")}&from=2026-09-01&view=voucher`);
+  await page.waitForSelector("text=検索結果");
+  log("filter by staff name gives the same result", (await count()) === byCode);
 
   // 5. CSV
   await page.goto(`${BASE_URL}/voucher-search`);

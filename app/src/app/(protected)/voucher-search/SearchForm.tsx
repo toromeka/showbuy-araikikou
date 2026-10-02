@@ -25,7 +25,15 @@ const MODES = [
 
 // 伝票検索の条件の入力欄。「検索」で条件をURLに入れて結果を表示する（CSVはファイルとしてダウンロードする）。
 // 表示モード（明細モード・伝票モード）は検索ボタンの手前で選び、検索した後に切り替えたときは、すぐに表示し直す。
-export function SearchForm({ params, view }: { params: VoucherSearchParams; view: "line" | "voucher" }) {
+export function SearchForm({
+  params,
+  view,
+  staffOptions,
+}: {
+  params: VoucherSearchParams;
+  view: "line" | "voucher";
+  staffOptions: { code: string; name: string }[];
+}) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const searched = params.types.length > 0;
@@ -86,8 +94,15 @@ export function SearchForm({ params, view }: { params: VoucherSearchParams; view
           <input name="partner" defaultValue={params.partner} placeholder="例: 0054 / 竹田" className="input" />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-600">伝票番号（一部でも可）</span>
-          <input name="no" defaultValue={params.voucherNo} inputMode="numeric" className="input" />
+          <span className="mb-1 block text-xs font-medium text-slate-600">担当者（コード、または名前の一部。一覧から選べます）</span>
+          <input name="staff" defaultValue={params.staff} list="voucher-search-staff" placeholder="例: 5 / 康介" autoComplete="off" className="input" />
+          <datalist id="voucher-search-staff">
+            {staffOptions.map((st) => (
+              <option key={st.code} value={st.code}>
+                {st.code} - {st.name}
+              </option>
+            ))}
+          </datalist>
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-slate-600">商品名（一部でも可。全角・半角カナどちらでも）</span>
@@ -97,7 +112,11 @@ export function SearchForm({ params, view }: { params: VoucherSearchParams; view
           <span className="mb-1 block text-xs font-medium text-slate-600">規格（一部でも可）</span>
           <input name="spec" defaultValue={params.spec} placeholder="例: XKDZ5" className="input" />
         </label>
-        <div className="sm:col-span-2">
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-slate-600">伝票番号（一部でも可）</span>
+          <input name="no" defaultValue={params.voucherNo} inputMode="numeric" className="input" />
+        </label>
+        <div>
           <span className="mb-1 block text-xs font-medium text-slate-600">伝票日付（期間）</span>
           <div className="flex flex-wrap items-center gap-2">
             <input type="date" name="from" defaultValue={params.from} className="input w-auto" />
