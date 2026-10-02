@@ -62,7 +62,7 @@ export function SalesVoucherForm({
   customers: CustomerOption[];
   staffOptions: StaffOption[];
   taxRates: TaxRateRow[];
-  // 新規登録のときの担当者の初期値（ログインしているユーザーに紐付いた担当者）
+  // 新規登録のときの担当者の初期値（ログインしているユーザーに紐付いた担当者。得意先を選ぶと得意先の担当者に切り替わる）
   initialStaffCode?: string | null;
   defaults?: {
     customer_code: string;
@@ -82,7 +82,6 @@ export function SalesVoucherForm({
     defaults?.voucher_date ?? new Date().toISOString().slice(0, 10),
   );
   const [staffCode, setStaffCode] = useState(defaults?.staff_code ?? initialStaffCode ?? "");
-  const selectedStaff = staffOptions.find((s) => s.code === staffCode.trim());
   const [isCashSale, setIsCashSale] = useState(defaults?.is_cash_sale ?? false);
   const [remarks, setRemarks] = useState(defaults?.remarks ?? "");
   const [lines, setLines] = useState<LineState[]>(defaults?.lines?.length ? defaults.lines : [emptyLine()]);
@@ -90,11 +89,11 @@ export function SalesVoucherForm({
 
   const selectedCustomer = customers.find((c) => c.code === customerCode);
 
-  // 得意先を選んだら、担当者が未設定なら得意先の既定担当者を自動セット
+  // 得意先を選んだら、その得意先に紐付いた担当者に切り替える（得意先に担当者が無ければそのまま）
   function handleCustomerChange(code: string) {
     setCustomerCode(code);
     const c = customers.find((x) => x.code === code);
-    if (c?.staff_code && !staffCode) setStaffCode(c.staff_code);
+    if (c?.staff_code && staffOptions.some((st) => st.code === c.staff_code)) setStaffCode(c.staff_code);
   }
 
   const effectiveTaxRate = useMemo(() => {
@@ -208,29 +207,30 @@ export function SalesVoucherForm({
               className="input"
             />
           </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-600">担当者コード（一覧から選べます）</span>
-            {/* 新規登録では、ログインしているユーザーに紐付いた担当者が最初から入る（ユーザー管理で設定。変えることもできる） */}
-            <input
-              value={staffCode}
-              onChange={(e) => setStaffCode(e.target.value)}
-              list="sales-voucher-staff"
-              placeholder="担当者コード"
-              autoComplete="off"
-              aria-label="担当者コード"
-              className="input"
-            />
-            <datalist id="sales-voucher-staff">
-              {staffOptions.map((s) => (
-                <option key={s.code} value={s.code}>
-                  {s.code} - {s.name}
-                </option>
+          <fieldset>
+            <legend className="mb-1 block text-xs font-medium text-slate-600">担当者</legend>
+            {/* 担当者は数人なので、押して選ぶ切り替えにする（1人だけ選べる）。
+                最初はログインしているユーザーの担当者、得意先を選ぶとその得意先の担当者に自動で切り替わる。手で変えることもできる */}
+            <div className="flex flex-wrap gap-1.5">
+              {[{ code: "", name: "未設定" }, ...staffOptions].map((st) => (
+                <label
+                  key={st.code || "none"}
+                  className="cursor-pointer rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 has-[:checked]:border-blue-600 has-[:checked]:bg-blue-600 has-[:checked]:font-semibold has-[:checked]:text-white"
+                  title={st.code ? `担当者コード ${st.code}` : "担当者なし"}
+                >
+                  <input
+                    type="radio"
+                    name="staff_code"
+                    value={st.code}
+                    checked={staffCode === st.code}
+                    onChange={() => setStaffCode(st.code)}
+                    className="sr-only"
+                  />
+                  {st.name}
+                </label>
               ))}
-            </datalist>
-            <span className={`mt-1 block truncate text-xs ${staffCode.trim() && !selectedStaff ? "text-red-600" : "text-slate-500"}`}>
-              {staffCode.trim() ? (selectedStaff ? selectedStaff.name : "該当する担当者が見つかりません") : "（未設定）"}
-            </span>
-          </label>
+            </div>
+          </fieldset>
           <label className="mt-6 flex items-center gap-2">
             <input
               type="checkbox"

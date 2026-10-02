@@ -19,13 +19,15 @@ export default async function EditSalesVoucherPage({
       orderBy: { code: "asc" },
       select: { code: true, name1: true, staff_code: true, rounding_method: true },
     }),
-    // 無効にした担当者の伝票も開けるよう、すべての担当者を一覧に入れる（無効な担当者には「（無効）」と付ける）
+    // 有効な担当者と、この伝票の担当者（無効にした担当者でも）を選択肢にする（無効な担当者には「（無効）」と付ける）
     prisma.staff.findMany({ orderBy: { code: "asc" } }),
     prisma.tax_rate_history.findMany({ orderBy: { starts_on: "asc" } }),
   ]);
 
   if (!voucher) notFound();
-  const staffOptions = staffRows.map((s) => ({ code: s.code, name: s.is_active ? s.name : `${s.name}（無効）` }));
+  const staffOptions = staffRows
+    .filter((s) => s.is_active || s.code === voucher.staff_code)
+    .map((s) => ({ code: s.code, name: s.is_active ? s.name : `${s.name}（無効）` }));
   if (voucher.is_billed) {
     return (
       <div>

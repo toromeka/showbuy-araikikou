@@ -93,17 +93,27 @@ export function SearchForm({
           <span className="mb-1 block text-xs font-medium text-slate-600">得意先・仕入先（コード、または名前の一部）</span>
           <input name="partner" defaultValue={params.partner} placeholder="例: 0054 / 竹田" className="input" />
         </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-600">担当者（コード、または名前の一部。一覧から選べます）</span>
-          <input name="staff" defaultValue={params.staff} list="voucher-search-staff" placeholder="例: 5 / 康介" autoComplete="off" className="input" />
-          <datalist id="voucher-search-staff">
+        <fieldset>
+          <legend className="mb-1 block text-xs font-medium text-slate-600">担当者（複数選べます。選ばなければ全員）</legend>
+          <div className="flex flex-wrap gap-1.5">
             {staffOptions.map((st) => (
-              <option key={st.code} value={st.code}>
-                {st.code} - {st.name}
-              </option>
+              <label
+                key={st.code}
+                title={`担当者コード ${st.code}`}
+                className="flex cursor-pointer items-center gap-1.5 rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50"
+              >
+                <input
+                  type="checkbox"
+                  name="staff"
+                  value={st.code}
+                  defaultChecked={params.staff.includes(st.code)}
+                  className="h-4 w-4"
+                />
+                {st.name}
+              </label>
             ))}
-          </datalist>
-        </label>
+          </div>
+        </fieldset>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-slate-600">商品名（一部でも可。全角・半角カナどちらでも）</span>
           <input name="product" defaultValue={params.product} placeholder="例: フラットドリル" className="input" />
