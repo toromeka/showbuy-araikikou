@@ -17,8 +17,8 @@ export type SearchType = keyof typeof SEARCH_TYPES;
 export type VoucherSearchParams = {
   types: SearchType[];
   partner: string;
-  // 担当者（コード、または名前の一部）。担当者があるのは売上・仕入伝票と見積書だけ
-  staff: string;
+  // 担当者コード（チェックボックスで複数選べる）。担当者があるのは売上・仕入伝票と見積書だけ
+  staff: string[];
   product: string;
   spec: string;
   voucherNo: string;
@@ -77,7 +77,7 @@ export function parseSearchParams(sp: Record<string, string | string[] | undefin
   return {
     types,
     partner: one("partner").trim(),
-    staff: one("staff").trim(),
+    staff: (sp.staff === undefined ? [] : Array.isArray(sp.staff) ? sp.staff : [sp.staff]).map((v) => v.trim()).filter(Boolean),
     product: one("product").trim(),
     spec: one("spec").trim(),
     voucherNo: one("no").trim(),
@@ -87,7 +87,7 @@ export function parseSearchParams(sp: Record<string, string | string[] | undefin
 }
 
 export function hasAnyCondition(p: VoucherSearchParams): boolean {
-  return !!(p.partner || p.staff || p.product || p.spec || p.voucherNo || p.from || p.to);
+  return !!(p.partner || p.staff.length || p.product || p.spec || p.voucherNo || p.from || p.to);
 }
 
 const num = (v: { toString(): string } | null | undefined) => (v === null || v === undefined ? null : Number(v));
@@ -116,10 +116,8 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
   const partnerWhere = (codeField: string, relation: "customers" | "suppliers", nameField: string) =>
     p.partner ? { OR: [{ [codeField]: partnerCode }, { [relation]: containsAny(nameField, p.partner) }] } : {};
   const noWhere = p.voucherNo ? { voucher_no: { contains: p.voucherNo } } : {};
-  // 担当者はコードの一致か、名前の一部
-  const staffWhere = p.staff
-    ? { OR: [{ staff_code: p.staff }, { staff: { name: { contains: p.staff, mode: "insensitive" as const } } }] }
-    : {};
+  // 担当者は選んだ担当者コードのどれか
+  const staffWhere = p.staff.length ? { staff_code: { in: p.staff } } : {};
   const lineWhere = { AND: [p.product ? containsAny("product_name", p.product) : {}, p.spec ? containsAny("spec", p.spec) : {}] };
 
   const rows: SearchRow[] = [];
@@ -277,7 +275,7 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
       skippedForProduct.push(type);
       continue;
     }
-    if (p.staff) {
+    if (p.staff.length) {
       skippedForStaff.push(type);
       continue;
     }

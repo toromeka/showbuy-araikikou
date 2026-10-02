@@ -6,7 +6,7 @@
 // - 商品名は全角カナ・ひらがな・半角カナのどれで入力しても同じ結果になる
 // - 得意先コードは先頭の0を省いても（54 → 0054）探せる
 // - 商品名で探すときは、入金・支払伝票は対象外である旨が出る
-// - 担当者（コード、または名前）で絞り込める。担当者の無い入金・支払伝票は対象外である旨が出る
+// - 担当者をチェックボックスで（複数）選んで絞り込める。担当者の無い入金・支払伝票は対象外である旨が出る
 // - CSVファイルで出力できる（Excelで開けるBOM付きUTF-8）
 // 得意先 0054（竹田栄鉄工）の売上伝票に、商品名に「ｺｰﾄ」を含む明細があり、担当者コード 5 の売上伝票が2026年9月以降にあること（移行済みの実データ）。
 // 事前に `npm run dev` でアプリを起動しておいてください。
@@ -100,9 +100,19 @@ try {
     byCode > 0 && staffCells.every((c) => c.trim() === staffName) && (await text()).includes("入金伝票には担当者が無いため"),
     `${byCode}件・担当者 ${staffName}`,
   );
-  await page.goto(`${BASE_URL}/voucher-search?type=sales&staff=${encodeURIComponent(staffName ?? "")}&from=2026-09-01&view=voucher`);
+  // 担当者のチェックボックスは複数選べる（2人選ぶと、それぞれの件数の合計）
+  await page.goto(`${BASE_URL}/voucher-search?type=sales&staff=2&from=2026-09-01&view=voucher`);
   await page.waitForSelector("text=検索結果");
-  log("filter by staff name gives the same result", (await count()) === byCode);
+  const other = await count();
+  await page.goto(`${BASE_URL}/voucher-search`);
+  for (const t of ["purchase", "receipt", "payment"]) await page.uncheck(`input[name="type"][value="${t}"]`);
+  await page.check('input[name="staff"][value="5"]');
+  await page.check('input[name="staff"][value="2"]');
+  await page.fill('input[name="from"]', "2026-09-01");
+  await page.click('button:has-text("検索")');
+  await page.waitForURL(/staff=5/, { timeout: 8000 });
+  await page.waitForSelector("text=検索結果");
+  log("multiple staff checkboxes give the sum", (await count()) === byCode + other, `${byCode} + ${other}`);
 
   // 5. CSV
   await page.goto(`${BASE_URL}/voucher-search`);
