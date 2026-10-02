@@ -9,6 +9,7 @@ import {
   type MigrationFiles,
   type MigrationPreview,
 } from "@/lib/migration/voucher-migration";
+import { executeNoteRepair, previewNoteRepair, type NoteRepairPreview } from "@/lib/migration/note-repair";
 
 export type MigrationActionResult = {
   preview?: MigrationPreview;
@@ -60,5 +61,40 @@ export async function executeMigrationAction(formData: FormData): Promise<Migrat
     return { preview, executed: true };
   } catch (e) {
     return { message: `取り込みに失敗しました（何も登録されていません）: ${e instanceof Error ? e.message : String(e)}` };
+  }
+}
+
+// ---- 取り込み済みの売上伝票の備考を、備考1・備考2に分け直す ----
+
+export type NoteRepairActionResult = { preview?: NoteRepairPreview; executed?: boolean; message?: string };
+
+async function readNoteRepairCsv(formData: FormData): Promise<string | null> {
+  return readFile(formData, "sales");
+}
+
+export async function previewNoteRepairAction(formData: FormData): Promise<NoteRepairActionResult> {
+  const user = await requireAdmin();
+  if (typeof user === "string") return { message: user };
+  const csv = await readNoteRepairCsv(formData);
+  if (!csv) return { message: "売上伝票のCSVファイルを選択してください。" };
+  try {
+    return { preview: await previewNoteRepair(csv) };
+  } catch (e) {
+    return { message: `ファイルを読み込めませんでした: ${e instanceof Error ? e.message : String(e)}` };
+  }
+}
+
+export async function executeNoteRepairAction(formData: FormData): Promise<NoteRepairActionResult> {
+  const user = await requireAdmin();
+  if (typeof user === "string") return { message: user };
+  const csv = await readNoteRepairCsv(formData);
+  if (!csv) return { message: "売上伝票のCSVファイルを選択してください。" };
+  try {
+    const preview = await executeNoteRepair(csv);
+    if (preview.errors.length > 0) return { preview, message: "エラーがあるため分け直しませんでした。" };
+    revalidatePath("/sales-vouchers");
+    return { preview, executed: true };
+  } catch (e) {
+    return { message: `分け直しに失敗しました（何も変更されていません）: ${e instanceof Error ? e.message : String(e)}` };
   }
 }

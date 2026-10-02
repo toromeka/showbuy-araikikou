@@ -27,11 +27,13 @@ export function normalizeHeader(h: string): string {
   return h.normalize("NFKC").replace(/\s/g, "");
 }
 
-export function parseCsv(text: string): Record<string, string>[] {
+// trim: false にすると、各欄の前後の空白を残して読む（伝票の取り込みで、売上伝票の「備考」の先頭・末尾の
+// 半角スペースから備考1・備考2を分けるため。その場合、各欄の前後の空白は読み取る側で除くこと）
+export function parseCsv(text: string, options: { trim?: boolean } = {}): Record<string, string>[] {
   return parse(text, {
     columns: (header: string[]) => header.map(normalizeHeader),
     skip_empty_lines: true,
-    trim: true,
+    trim: options.trim ?? true,
     relax_column_count: true,
     bom: true,
   }) as Record<string, string>[];

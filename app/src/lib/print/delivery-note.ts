@@ -65,21 +65,22 @@ function slipHtml(opts: {
   for (let i = 0; i < LINES_PER_SLIP; i++) {
     const l = lines[i];
     if (l) {
-      // 商品名と規格、備考1と備考2は、それぞれ上下2段に印刷する（実際の伝票と同じ）
+      // 商品名と規格、備考1と備考2は、それぞれ行の上の段・下の段に固定して印刷する（実際の伝票と同じ。
+      // 規格や備考2が空でも、商品名・備考1は必ず上の段に出す）
       rows.push(`
         <tr>
           <td class="c">${l.line_no}</td>
-          <td class="name">
+          <td class="two">
             <div>${fitText(l.product_name, NAME_WIDTH_MM, FONT_PX)}</div>
-            ${l.spec ? `<div>${fitText(l.spec, NAME_WIDTH_MM, FONT_PX)}</div>` : ""}
+            <div>${fitText(l.spec, NAME_WIDTH_MM, FONT_PX)}</div>
           </td>
           <td class="r">${fitText(qtyStr(l.quantity), inner(COLS.qty), FONT_PX)}</td>
           <td class="c">${fitText(l.unit, inner(COLS.unit), FONT_PX)}</td>
           <td class="r">${l.sale_price != null ? fitText(unitPriceStr(l.sale_price), inner(COLS.price), FONT_PX) : ""}</td>
           <td class="r">${l.sale_amount != null ? fitText(yen(l.sale_amount), inner(COLS.amount), FONT_PX) : ""}</td>
-          <td class="note">
-            ${l.note ? `<div>${fitText(l.note, inner(COLS.note), SMALL_PX)}</div>` : ""}
-            ${l.note2 ? `<div>${fitText(l.note2, inner(COLS.note), SMALL_PX)}</div>` : ""}
+          <td class="two note">
+            <div>${fitText(l.note, inner(COLS.note), SMALL_PX)}</div>
+            <div>${fitText(l.note2, inner(COLS.note), SMALL_PX)}</div>
           </td>
         </tr>`);
     } else {
@@ -166,7 +167,7 @@ export async function deliveryNotePdf(id: string): Promise<PrintedPdf | null> {
   // 位置はすべてA4用紙の左上からのmmで指定する（余白0で出力）。
   // 明細表と集計の段は、罫線が重ならないよう1つの枠の中に続けて並べる。
   // 2026-10: 自社名などを上へ詰め、空いた分だけ明細の行を高くした（8.5mm → 10.2mm）。
-  // 明細の枠の左右両端の縦の罫線は、旧伝票と同じく引かない。
+  // 明細の枠と、日付・得意先・伝票番号の枠の左右両端の縦の罫線は、旧伝票と同じく引かない。
   const extraStyle = `
     ${SLIP_BASE_STYLE}
     .dn-page { position: relative; width: 210mm; height: 297mm; overflow: hidden; page-break-after: always; }
@@ -179,11 +180,13 @@ export async function deliveryNotePdf(id: string): Promise<PrintedPdf | null> {
     .dn-minibox th, .dn-minibox td { border: 0.3mm solid #000; text-align: center; padding: 0; white-space: nowrap; }
     .dn-minibox th { height: 5mm; font-size: ${SMALL_PX}px; background: #e5e7eb; }
     .dn-minibox td { height: 7mm; font-size: ${FONT_PX}px; }
+    .dn-minibox tr > :first-child { border-left: none; }
+    .dn-minibox tr > :last-child { border-right: none; }
     .dn-minibox th:nth-child(1) { width: 25mm; } .dn-minibox th:nth-child(2) { width: 14.5mm; } .dn-minibox th:nth-child(3) { width: 17.5mm; }
     .dn-zip { left: 22mm; top: 20.5mm; }
     .dn-addr { left: 22mm; top: 27.5mm; min-width: 70mm; border-bottom: 0.3mm solid #000; padding-right: 2mm; white-space: nowrap; }
     .dn-cust { left: 22mm; top: 36mm; min-width: 70mm; display: flex; justify-content: space-between; align-items: baseline; gap: 4mm; border-bottom: 0.3mm solid #000; white-space: nowrap; }
-    .dn-company { right: 7.5mm; top: 20mm; }
+    .dn-company { right: 7.5mm; top: 22.5mm; }
     .dn-company.sc-company { font-size: 16.2px; line-height: 1.25; }
     .dn-company .sc-form { font-size: ${SMALL_PX}px; }
     .dn-company .sc-body { font-size: 21.7px; }
@@ -194,7 +197,9 @@ export async function deliveryNotePdf(id: string): Promise<PrintedPdf | null> {
     .dn-table th, .dn-table td { border: 0.3mm solid #000; height: 10.2mm; padding: 0 1.5mm; overflow: hidden; white-space: nowrap; line-height: 1.05; }
     .dn-table th { height: 8mm; background: #e5e7eb; text-align: center; }
     .dn-table tbody tr:nth-child(even) td { background: #f1f3f5; }
-    .dn-table td.note { font-size: ${SMALL_PX}px; line-height: 1.15; }
+    .dn-table td.two { padding-top: 0; padding-bottom: 0; vertical-align: top; }
+    .dn-table td.two > div { height: 5.1mm; line-height: 5.1mm; overflow: hidden; }
+    .dn-table td.note { font-size: ${SMALL_PX}px; }
     .dn-summary { border-bottom: 0.4mm solid #000; }
     .dn-summary td { border: 0.3mm solid #000; border-top: none; height: 10mm; padding: 0.4mm 1.5mm; vertical-align: top; overflow: hidden; }
     .dn-table tr > :first-child, .dn-summary td:first-child { border-left: none; }
