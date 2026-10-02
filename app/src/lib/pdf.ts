@@ -1,4 +1,5 @@
 import { chromium } from "playwright";
+import { halfWidthCount } from "@/lib/text-width";
 
 // 伝票PDF出力（請求書・納品書・見積書）の共通ヘルパー。
 // HTMLをChromium（Playwright）でPDF化する方式を採用している。
@@ -82,16 +83,9 @@ export const SLIP_FONT = `"BIZ UDGothic", "BIZ UDゴシック", "IPAGothic", "IP
 
 const PX_PER_MM = 96 / 25.4;
 
-function isHalfWidth(ch: string): boolean {
-  const c = ch.codePointAt(0) ?? 0;
-  return c <= 0x7e || (c >= 0xff61 && c <= 0xff9f);
-}
-
 // 文字列の幅（全角1文字=1）
 export function emWidth(s: string): number {
-  let w = 0;
-  for (const ch of s) w += isHalfWidth(ch) ? 0.5 : 1;
-  return w;
+  return halfWidthCount(s) / 2;
 }
 
 // 欄の幅（mm）に収まらない長い文字は、その欄だけ文字を小さくして印刷する（最小は基準の6割）
