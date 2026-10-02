@@ -62,6 +62,14 @@ try {
   await secondRow.locator('input[type="number"]').first().fill("-1"); // quantity
   await secondRow.locator('input[type="number"]').nth(2).fill("500"); // sale_price -> -500
   // 規格は商品名の下、備考は備考1・備考2の2段
+  // 商品名・規格は、納品書に印刷できる半角32文字（全角は2と数える）までしか入らない
+  const specInput = secondRow.locator('input[aria-label="規格"]');
+  await specInput.pressSequentially("ABCDEFGHIJ0123456789abcdefghijKLMNOP");
+  const limited = await specInput.inputValue();
+  await specInput.fill("");
+  await specInput.pressSequentially("あいうえおかきくけこさしすせそたち");
+  const limitedFull = await specInput.inputValue();
+  log("spec input stops at 32 half-width chars (full-width counts 2)", limited.length === 32 && limitedFull.length === 16, `${limited.length} / ${limitedFull.length}`);
   await secondRow.locator('input[aria-label="規格"]').fill("スモーク規格S");
   await secondRow.locator('input[aria-label="備考1"]').fill("スモーク備考1");
   await secondRow.locator('input[aria-label="備考2"]').fill("スモーク備考2");

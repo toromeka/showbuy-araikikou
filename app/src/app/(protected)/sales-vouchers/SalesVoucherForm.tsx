@@ -10,6 +10,8 @@ import {
   type SalesVoucherInput,
 } from "@/lib/actions/sales-vouchers";
 import { SearchButton, SearchDialog, openOnF8 } from "@/components/SearchDialog";
+import { PrintWidthInput } from "@/components/PrintWidthInput";
+import { DELIVERY_NOTE_NAME_MAX, truncateToHalfWidth } from "@/lib/text-width";
 import { ClosingNotice } from "@/components/ClosingNotice";
 import { ProductCodeInput } from "@/components/ProductCodeInput";
 import { HANDWRITE_PRODUCT_CODE } from "@/lib/product-codes";
@@ -239,13 +241,13 @@ export function SalesVoucherForm({
             <thead className="text-left text-xs text-slate-500">
               <tr>
                 <th className="w-32 pb-2">商品コード</th>
-                <th className="w-72 pb-2">商品名（入力で候補検索）／規格</th>
+                <th className="pb-2">商品名（入力で候補検索）／規格</th>
                 <th className="w-16 pb-2">単位</th>
                 <th className="w-20 pb-2">数量</th>
                 <th className="w-24 pb-2">仕入単価</th>
                 <th className="w-24 pb-2">売上単価</th>
                 <th className="w-28 pb-2 pr-4 text-right">売上金額</th>
-                <th className="w-40 pb-2">備考1／備考2</th>
+                <th className="w-36 pb-2">備考1／備考2</th>
                 <th className="w-8 pb-2"></th>
               </tr>
             </thead>
@@ -364,15 +366,17 @@ function LineRow({
       setOpen(false);
       return;
     }
+    // 商品マスタの名前・規格が納品書に印刷できる文字数より長い場合は、印刷できる分までにする
+    const name = truncateToHalfWidth(p.name, DELIVERY_NOTE_NAME_MAX);
     onChange(line.key, {
       product_code: p.code,
-      product_name: p.name,
-      spec: p.spec ?? "",
+      product_name: name,
+      spec: truncateToHalfWidth(p.spec ?? "", DELIVERY_NOTE_NAME_MAX),
       unit: p.unit_code ?? "",
       cost_price: p.standard_cost ?? "",
       sale_price: p.sale_price_1 ?? "",
     });
-    setQuery(p.name);
+    setQuery(name);
     setOpen(false);
   }
 
@@ -392,16 +396,18 @@ function LineRow({
       </td>
       <td className="relative py-1 pr-2">
         <div className="flex gap-1">
-          <input
+          <PrintWidthInput
             value={query}
-            onChange={(e) => handleQueryChange(e.target.value)}
+            onValueChange={handleQueryChange}
+            maxHalfWidth={DELIVERY_NOTE_NAME_MAX}
+            aria-label="商品名"
             onFocus={() => results.length > 0 && setOpen(true)}
             onBlur={() => setTimeout(() => setOpen(false), 150)}
             onKeyDown={openOnF8(() => setDialogOpen(true))}
             placeholder={
               line.product_code === HANDWRITE_PRODUCT_CODE ? "品名を入力" : "商品名 or コードで検索（F8で検索ダイアログ）"
             }
-            className="input min-w-0 flex-1"
+            className="input shrink-0"
           />
           <SearchButton onClick={() => setDialogOpen(true)} />
         </div>
@@ -422,9 +428,10 @@ function LineRow({
           </ul>
         )}
         {/* 候補の一覧は商品名の欄のすぐ下に重ねて出す。規格は、実際の伝票と同じく商品名の下の段に入力する */}
-        <input
+        <PrintWidthInput
           value={line.spec}
-          onChange={(e) => onChange(line.key, { spec: e.target.value })}
+          onValueChange={(v) => onChange(line.key, { spec: v })}
+          maxHalfWidth={DELIVERY_NOTE_NAME_MAX}
           placeholder="規格"
           aria-label="規格"
           className="input mt-1"
