@@ -86,6 +86,10 @@ async function validateInput(input: SalesVoucherInput): Promise<string | null> {
   if (validLines.length === 0) return "明細を1行以上入力してください（商品名と数量が必要です）。";
   const customer = await prisma.customers.findUnique({ where: { code: input.customer_code } });
   if (!customer) return "指定された得意先が見つかりません。";
+  // 担当者はコードを直接入力できるため、担当者マスタにあるか確かめる
+  if (input.staff_code && !(await prisma.staff.findUnique({ where: { code: input.staff_code } }))) {
+    return `担当者コード「${input.staff_code}」は担当者マスタにありません。`;
+  }
   const productError = await checkProductCodes(input.lines);
   if (productError) return productError;
   return null;
