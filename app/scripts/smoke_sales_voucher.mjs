@@ -61,6 +61,10 @@ try {
   await secondRow.locator('input[placeholder*="商品名"]').fill("値引き");
   await secondRow.locator('input[type="number"]').first().fill("-1"); // quantity
   await secondRow.locator('input[type="number"]').nth(2).fill("500"); // sale_price -> -500
+  // 規格は商品名の下、備考は備考1・備考2の2段
+  await secondRow.locator('input[aria-label="規格"]').fill("スモーク規格S");
+  await secondRow.locator('input[aria-label="備考1"]').fill("スモーク備考1");
+  await secondRow.locator('input[aria-label="備考2"]').fill("スモーク備考2");
 
   await page.click('button:has-text("保存")');
   await page.waitForURL(/\/sales-vouchers\/\d+$/, { timeout: 15000 });
@@ -68,6 +72,7 @@ try {
 
   let text = await page.textContent("body");
   log("detail shows both lines", text.includes("値引き"));
+  log("spec and both remarks (備考1・備考2) saved", text.includes("スモーク規格S") && text.includes("スモーク備考1") && text.includes("スモーク備考2"));
   // 3*1000 - 1*500 = 2500 sales_amount (税抜)
   log("sales amount computed (2,500)", /2,500/.test(text));
 

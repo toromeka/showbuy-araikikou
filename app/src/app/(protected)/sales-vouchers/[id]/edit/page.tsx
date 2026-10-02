@@ -56,6 +56,7 @@ export default async function EditSalesVoucherPage({
       cost_price: l.cost_price?.toString() ?? "",
       sale_price: l.sale_price?.toString() ?? "",
       note: l.note ?? "",
+      note2: l.note2 ?? "",
     })),
   };
 

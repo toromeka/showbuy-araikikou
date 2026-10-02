@@ -28,6 +28,7 @@ type LineState = {
   cost_price: string;
   sale_price: string;
   note: string;
+  note2: string;
 };
 
 function emptyLine(): LineState {
@@ -41,6 +42,7 @@ function emptyLine(): LineState {
     cost_price: "",
     sale_price: "",
     note: "",
+    note2: "",
   };
 }
 
@@ -152,6 +154,7 @@ export function SalesVoucherForm({
         cost_price: l.cost_price === "" ? null : Number(l.cost_price),
         sale_price: l.sale_price === "" ? null : Number(l.sale_price),
         note: l.note || null,
+        note2: l.note2 || null,
       })),
     };
 
@@ -232,18 +235,17 @@ export function SalesVoucherForm({
       <section className="rounded-lg border border-slate-200 bg-white p-6">
         <h2 className="mb-4 text-sm font-bold text-slate-600">明細</h2>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1020px] text-sm">
+          <table className="w-full min-w-[960px] text-sm">
             <thead className="text-left text-xs text-slate-500">
               <tr>
                 <th className="w-32 pb-2">商品コード</th>
-                <th className="w-56 pb-2">商品名（入力で候補検索）</th>
-                <th className="w-32 pb-2">規格</th>
+                <th className="w-72 pb-2">商品名（入力で候補検索）／規格</th>
                 <th className="w-16 pb-2">単位</th>
                 <th className="w-20 pb-2">数量</th>
                 <th className="w-24 pb-2">仕入単価</th>
                 <th className="w-24 pb-2">売上単価</th>
-                <th className="w-28 pb-2 text-right">売上金額</th>
-                <th className="w-32 pb-2">備考</th>
+                <th className="w-28 pb-2 pr-4 text-right">売上金額</th>
+                <th className="w-40 pb-2">備考1／備考2</th>
                 <th className="w-8 pb-2"></th>
               </tr>
             </thead>
@@ -419,6 +421,14 @@ function LineRow({
             ))}
           </ul>
         )}
+        {/* 候補の一覧は商品名の欄のすぐ下に重ねて出す。規格は、実際の伝票と同じく商品名の下の段に入力する */}
+        <input
+          value={line.spec}
+          onChange={(e) => onChange(line.key, { spec: e.target.value })}
+          placeholder="規格"
+          aria-label="規格"
+          className="input mt-1"
+        />
         <SearchDialog
           open={dialogOpen}
           title="商品検索"
@@ -436,13 +446,6 @@ function LineRow({
           }}
           onClose={() => setDialogOpen(false)}
           placeholder="商品コード or 商品名で検索"
-        />
-      </td>
-      <td className="py-1 pr-2">
-        <input
-          value={line.spec}
-          onChange={(e) => onChange(line.key, { spec: e.target.value })}
-          className="input"
         />
       </td>
       <td className="py-1 pr-2">
@@ -479,12 +482,24 @@ function LineRow({
           className="input"
         />
       </td>
-      <td className="py-2 pr-2 text-right text-slate-700">{Math.round(saleAmount).toLocaleString()}</td>
+      <td className="py-2 pr-4 text-right text-slate-700">{Math.round(saleAmount).toLocaleString()}</td>
       <td className="py-1 pr-2">
+        {/* 備考は旧システムと同じく2行（備考1・備考2）。納品書にも上下2段で印刷する */}
         <input
           value={line.note}
           onChange={(e) => onChange(line.key, { note: e.target.value })}
+          placeholder="備考1"
+          aria-label="備考1"
+          maxLength={100}
           className="input"
+        />
+        <input
+          value={line.note2}
+          onChange={(e) => onChange(line.key, { note2: e.target.value })}
+          placeholder="備考2"
+          aria-label="備考2"
+          maxLength={100}
+          className="input mt-1"
         />
       </td>
       <td className="py-1 text-center">
