@@ -17,6 +17,8 @@ export type SearchType = keyof typeof SEARCH_TYPES;
 export type VoucherSearchParams = {
   types: SearchType[];
   partner: string;
+  // 担当者（コード、または名前の一部）。担当者があるのは売上・仕入伝票と見積書だけ
+  staff: string;
   product: string;
   spec: string;
   voucherNo: string;
@@ -49,6 +51,8 @@ export type SearchRow = {
   partnerName: string;
   // 並べ替え用の得意先・仕入先のふりがな（マスタの「ﾌﾘｶﾞﾅ」。無ければ空）
   partnerKana: string;
+  staffCode: string | null;
+  staffName: string | null;
   amount: number;
   tax: number | null;
   remarks: string | null;
@@ -56,7 +60,12 @@ export type SearchRow = {
   lines: SearchLine[];
 };
 
-export type SearchResult = { rows: SearchRow[]; truncated: SearchType[]; skippedForProduct: SearchType[] };
+export type SearchResult = {
+  rows: SearchRow[];
+  truncated: SearchType[];
+  skippedForProduct: SearchType[];
+  skippedForStaff: SearchType[];
+};
 
 // 種類ごとの最大件数（画面が重くならないように。超えた場合は期間などで絞るよう表示する）
 export const MAX_PER_TYPE = 500;
@@ -68,6 +77,7 @@ export function parseSearchParams(sp: Record<string, string | string[] | undefin
   return {
     types,
     partner: one("partner").trim(),
+    staff: one("staff").trim(),
     product: one("product").trim(),
     spec: one("spec").trim(),
     voucherNo: one("no").trim(),
@@ -77,7 +87,7 @@ export function parseSearchParams(sp: Record<string, string | string[] | undefin
 }
 
 export function hasAnyCondition(p: VoucherSearchParams): boolean {
-  return !!(p.partner || p.product || p.spec || p.voucherNo || p.from || p.to);
+  return !!(p.partner || p.staff || p.product || p.spec || p.voucherNo || p.from || p.to);
 }
 
 const num = (v: { toString(): string } | null | undefined) => (v === null || v === undefined ? null : Number(v));
@@ -106,11 +116,16 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
   const partnerWhere = (codeField: string, relation: "customers" | "suppliers", nameField: string) =>
     p.partner ? { OR: [{ [codeField]: partnerCode }, { [relation]: containsAny(nameField, p.partner) }] } : {};
   const noWhere = p.voucherNo ? { voucher_no: { contains: p.voucherNo } } : {};
+  // 担当者はコードの一致か、名前の一部
+  const staffWhere = p.staff
+    ? { OR: [{ staff_code: p.staff }, { staff: { name: { contains: p.staff, mode: "insensitive" as const } } }] }
+    : {};
   const lineWhere = { AND: [p.product ? containsAny("product_name", p.product) : {}, p.spec ? containsAny("spec", p.spec) : {}] };
 
   const rows: SearchRow[] = [];
   const truncated: SearchType[] = [];
   const skippedForProduct: SearchType[] = [];
+  const skippedForStaff: SearchType[] = [];
   const take = MAX_PER_TYPE + 1;
   const push = (type: SearchType, items: SearchRow[]) => {
     if (items.length > MAX_PER_TYPE) truncated.push(type);
@@ -122,10 +137,11 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
       where: {
         ...dateRange("voucher_date"),
         ...noWhere,
+        ...staffWhere,
         ...partnerWhere("customer_code", "customers", "name1"),
         ...(lineFilter ? { sales_voucher_lines: { some: lineWhere } } : {}),
       },
-      include: { customers: { select: { name1: true, kana: true } }, sales_voucher_lines: { orderBy: { line_no: "asc" } } },
+      include: { customers: { select: { name1: true, kana: true } }, staff: { select: { name: true } }, sales_voucher_lines: { orderBy: { line_no: "asc" } } },
       orderBy: [{ voucher_date: "desc" }, { voucher_no: "desc" }],
       take,
     });
@@ -139,6 +155,8 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
         partnerCode: v.customer_code,
         partnerName: v.customers.name1,
         partnerKana: v.customers.kana ?? "",
+        staffCode: v.staff_code,
+        staffName: v.staff?.name ?? null,
         amount: Number(v.sales_amount),
         tax: Number(v.tax_amount),
         remarks: v.remarks,
@@ -165,10 +183,11 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
       where: {
         ...dateRange("voucher_date"),
         ...noWhere,
+        ...staffWhere,
         ...partnerWhere("supplier_code", "suppliers", "name1"),
         ...(lineFilter ? { purchase_voucher_lines: { some: lineWhere } } : {}),
       },
-      include: { suppliers: { select: { name1: true, kana: true } }, purchase_voucher_lines: { orderBy: { line_no: "asc" } } },
+      include: { suppliers: { select: { name1: true, kana: true } }, staff: { select: { name: true } }, purchase_voucher_lines: { orderBy: { line_no: "asc" } } },
       orderBy: [{ voucher_date: "desc" }, { voucher_no: "desc" }],
       take,
     });
@@ -182,6 +201,8 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
         partnerCode: v.supplier_code,
         partnerName: v.suppliers.name1,
         partnerKana: v.suppliers.kana ?? "",
+        staffCode: v.staff_code,
+        staffName: v.staff?.name ?? null,
         amount: Number(v.subtotal_amount),
         tax: Number(v.tax_amount),
         remarks: v.remarks,
@@ -208,10 +229,11 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
       where: {
         ...dateRange("quotation_date"),
         ...noWhere,
+        ...staffWhere,
         ...partnerWhere("customer_code", "customers", "name1"),
         ...(lineFilter ? { quotation_lines: { some: lineWhere } } : {}),
       },
-      include: { customers: { select: { name1: true, kana: true } }, quotation_lines: { orderBy: { line_no: "asc" } } },
+      include: { customers: { select: { name1: true, kana: true } }, staff: { select: { name: true } }, quotation_lines: { orderBy: { line_no: "asc" } } },
       orderBy: [{ quotation_date: "desc" }, { voucher_no: "desc" }],
       take,
     });
@@ -225,6 +247,8 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
         partnerCode: v.customer_code,
         partnerName: v.customers.name1,
         partnerKana: v.customers.kana ?? "",
+        staffCode: v.staff_code,
+        staffName: v.staff?.name ?? null,
         amount: Number(v.quote_amount),
         tax: null,
         remarks: [v.project_name1, v.project_name2, v.remarks].filter(Boolean).join(" / ") || null,
@@ -246,11 +270,15 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
     );
   }
 
-  // 入金・支払伝票には商品の明細が無いため、商品名・規格で探すときは対象外にする
+  // 入金・支払伝票には商品の明細と担当者が無いため、商品名・規格や担当者で探すときは対象外にする
   for (const type of ["receipt", "payment"] as const) {
     if (!types.includes(type)) continue;
     if (lineFilter) {
       skippedForProduct.push(type);
+      continue;
+    }
+    if (p.staff) {
+      skippedForStaff.push(type);
       continue;
     }
     if (type === "receipt") {
@@ -270,6 +298,8 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
           partnerCode: v.customer_code,
           partnerName: v.customers.name1,
           partnerKana: v.customers.kana ?? "",
+          staffCode: null,
+          staffName: null,
           amount: Number(v.subtotal_amount),
           tax: null,
           remarks: null,
@@ -306,6 +336,8 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
           partnerCode: v.supplier_code,
           partnerName: v.suppliers.name1,
           partnerKana: v.suppliers.kana ?? "",
+          staffCode: null,
+          staffName: null,
           amount: Number(v.subtotal_amount),
           tax: null,
           remarks: null,
@@ -342,7 +374,7 @@ export async function searchVouchers(p: VoucherSearchParams): Promise<SearchResu
 
   // すべての種類をまとめて、日付の新しい順に並べる
   rows.sort((a, b) => (a.date === b.date ? (a.voucherNo < b.voucherNo ? 1 : -1) : a.date < b.date ? 1 : -1));
-  return { rows, truncated, skippedForProduct };
+  return { rows, truncated, skippedForProduct, skippedForStaff };
 }
 
 // CSV（Excelで開けるよう、BOM付きUTF-8）。明細ごとに1行
@@ -351,11 +383,11 @@ export function toCsv(rows: SearchRow[], lineFilter: boolean): string {
     const s = v === null || v === undefined ? "" : String(v);
     return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  const header = ["種類", "伝票番号", "伝票日付", "得意先/仕入先コード", "得意先/仕入先名", "伝票金額", "行", "商品コード", "商品名/区分", "規格", "数量", "単位", "単価", "金額", "備考"];
+  const header = ["種類", "伝票番号", "伝票日付", "得意先/仕入先コード", "得意先/仕入先名", "担当者コード", "担当者名", "伝票金額", "行", "商品コード", "商品名/区分", "規格", "数量", "単位", "単価", "金額", "備考"];
   const out = [header.join(",")];
   for (const r of rows) {
     const lines = lineFilter ? r.lines.filter((l) => l.matched) : r.lines;
-    const base = [SEARCH_TYPES[r.type].label, r.voucherNo, r.date.replace(/-/g, "/"), r.partnerCode, r.partnerName, r.amount];
+    const base = [SEARCH_TYPES[r.type].label, r.voucherNo, r.date.replace(/-/g, "/"), r.partnerCode, r.partnerName, r.staffCode, r.staffName, r.amount];
     if (lines.length === 0) out.push([...base, "", "", "", "", "", "", "", "", ""].map(esc).join(","));
     for (const l of lines) {
       out.push(

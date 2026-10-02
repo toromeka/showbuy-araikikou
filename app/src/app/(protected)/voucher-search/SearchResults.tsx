@@ -156,6 +156,11 @@ export function SearchResults({
             件までを表示しています。期間などで絞り込んでください。
           </p>
         )}
+        {result.skippedForStaff.length > 0 && (
+          <p className="mt-2 text-xs text-slate-500">
+            {result.skippedForStaff.map((t) => TYPE_LABEL[t]).join("・")}には担当者が無いため、担当者で探すときは対象外です。
+          </p>
+        )}
         {result.skippedForProduct.length > 0 && (
           <p className="mt-2 text-xs text-slate-500">
             {result.skippedForProduct.map((t) => TYPE_LABEL[t]).join("・")}には商品の明細が無いため、商品名・規格で探すときは対象外です。
@@ -219,6 +224,7 @@ export function SearchResults({
                 {header("no", "伝票番号")}
                 {header("date", "日付")}
                 {header("partner", "得意先・仕入先")}
+                <th className="px-3 py-2">担当者</th>
                 {header("amount", "金額", "right")}
                 <th className="px-3 py-2">明細</th>
               </tr>
@@ -241,6 +247,7 @@ export function SearchResults({
                     <td className="px-3 py-2">
                       <span className="font-mono text-slate-500">{r.partnerCode}</span> {r.partnerName}
                     </td>
+                    <td className="px-3 py-2 text-slate-600">{r.staffName ?? ""}</td>
                     <td className="px-3 py-2 text-right">{yen(r.amount)}</td>
                     <td className="px-3 py-2 text-slate-600">
                       {first && (
@@ -310,6 +317,14 @@ function VoucherPanel({ row, lineFilter, onClose }: { row: SearchRow; lineFilter
             <dd>
               <span className="font-mono text-slate-500">{row.partnerCode}</span> {row.partnerName}
             </dd>
+            {row.staffCode && (
+              <>
+                <dt className="text-slate-500">担当者</dt>
+                <dd>
+                  <span className="font-mono text-slate-500">{row.staffCode}</span> {row.staffName}
+                </dd>
+              </>
+            )}
             {row.remarks && (
               <>
                 <dt className="text-slate-500">{row.type === "quotation" ? "件名・備考" : "摘要"}</dt>
